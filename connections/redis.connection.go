@@ -1,0 +1,27 @@
+package sdk_con
+
+import (
+	"time"
+
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	"github.com/redis/go-redis/v9"
+)
+
+func RedisConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*redis.Client, error) {
+	parseURL, err := redis.ParseURL(req.Config.REDIS.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	return redis.NewClient(&redis.Options{
+		Addr:            parseURL.Addr,
+		MaxRetries:      10,
+		PoolSize:        20,
+		PoolFIFO:        true,
+		ReadTimeout:     time.Duration(time.Second * 30),
+		WriteTimeout:    time.Duration(time.Second * 30),
+		DialTimeout:     time.Duration(time.Second * 60),
+		MinRetryBackoff: time.Duration(time.Second * 60),
+		MaxRetryBackoff: time.Duration(time.Second * 120),
+	}), nil
+}
