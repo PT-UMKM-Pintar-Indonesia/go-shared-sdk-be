@@ -11,6 +11,7 @@ import (
 
 type (
 	ServiceOptions struct {
+		CTX  context.Context
 		ENV  Request[Environtment]
 		DB   *bun.DB
 		RDS  *redis.Client
@@ -22,12 +23,21 @@ type (
 	}
 
 	ControllerOptions[T any] struct {
+		CTX     context.Context
+		ENV     Request[Environtment]
+		DB      *bun.DB
+		RDS     *redis.Client
+		AMQP    *rabbitmq.Conn
+		ROUTER  chi.Router
 		USECASE T
 	}
 
 	RouteOptions[T any] struct {
+		CTX        context.Context
 		ENV        Request[Environtment]
+		DB         *bun.DB
 		RDS        *redis.Client
+		AMQP       *rabbitmq.Conn
 		ROUTER     chi.Router
 		CONTROLLER T
 	}
@@ -48,7 +58,27 @@ type (
 		AMQP *rabbitmq.Conn
 	}
 
+	CallbackOptions[T any] struct {
+		CTX        context.Context
+		ENV        Request[Environtment]
+		DB         *bun.DB
+		RDS        *redis.Client
+		AMQP       *rabbitmq.Conn
+		ROUTER     *chi.Mux
+		CONTROLLER T
+	}
+
+	EventOptions[T any] struct {
+		CTX     context.Context
+		ENV     Request[Environtment]
+		DB      *bun.DB
+		RDS     *redis.Client
+		AMQP    *rabbitmq.Conn
+		USECASE T
+	}
+
 	ModuleOptions struct {
+		CTX    context.Context
 		ENV    Request[Environtment]
 		DB     *bun.DB
 		RDS    *redis.Client
