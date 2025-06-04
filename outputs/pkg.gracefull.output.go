@@ -6,5 +6,4 @@ import (
 
 type Graceful struct {
 	HANDLER *chi.Mux
-	ENV     *Environtment
 }
