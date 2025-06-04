@@ -21,11 +21,11 @@ func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.
 
 	server := http.Server{
 		Handler:        h.HANDLER,
-		Addr:           ":" + h.ENV.APP.PORT,
+		Addr:           ":" + req.Config.APP.PORT,
 		MaxHeaderBytes: req.Config.APP.INBOUND_SIZE,
 		TLSConfig:      &tls.Config{InsecureSkipVerify: secure},
 	}
 
-	Logrus(sdk_cons.INFO, "Server listening on port %s", h.ENV.APP.PORT)
+	Logrus(sdk_cons.INFO, "Server listening on port %s", req.Config.APP.PORT)
 	return graceful.Graceful(server.ListenAndServe, server.Shutdown)
 }
