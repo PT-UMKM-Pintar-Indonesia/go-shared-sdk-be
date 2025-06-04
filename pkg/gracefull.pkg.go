@@ -15,17 +15,17 @@ func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.
 	h := Handler()
 	secure := true
 
-	if _, ok := os.LookupEnv("GO_ENV"); ok && req.Option.APP.ENV != sdk_cons.DEV {
+	if _, ok := os.LookupEnv("GO_ENV"); ok && req.Config.APP.ENV != sdk_cons.DEV {
 		secure = false
 	}
 
 	server := http.Server{
 		Handler:        h.HANDLER,
-		Addr:           ":" + req.Option.APP.PORT,
-		MaxHeaderBytes: req.Option.APP.INBOUND_SIZE,
+		Addr:           ":" + req.Config.APP.PORT,
+		MaxHeaderBytes: req.Config.APP.INBOUND_SIZE,
 		TLSConfig:      &tls.Config{InsecureSkipVerify: secure},
 	}
 
-	Logrus(sdk_cons.INFO, "Server listening on port %s", req.Option.APP.PORT)
+	Logrus(sdk_cons.INFO, "Server listening on port %s", req.Config.APP.PORT)
 	return graceful.Graceful(server.ListenAndServe, server.Shutdown)
 }
