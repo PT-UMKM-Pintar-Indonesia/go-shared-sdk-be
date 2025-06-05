@@ -89,8 +89,10 @@ type (
 
 type (
 	EmailOptions struct {
+		Channel    string         `json:"channel,omitempty"`
 		Sender     string         `json:"sender,omitempty"`
-		Recipients []string       `json:"recipients"`
+		Type       string         `json:"type"`
+		Recipients []string       `json:"recipient"`
 		Subject    string         `json:"subject"`
 		CC         []string       `json:"cc,omitempty"`
 		BCC        []string       `json:"bcc,omitempty"`
