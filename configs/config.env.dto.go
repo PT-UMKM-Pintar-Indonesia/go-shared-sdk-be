@@ -3,8 +3,8 @@ package sdk_config
 import (
 	"os"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 	genv "github.com/caarlos0/env"
 	"github.com/spf13/viper"
 )

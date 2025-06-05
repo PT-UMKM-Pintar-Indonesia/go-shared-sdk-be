@@ -3,7 +3,7 @@ package sdk_helper
 import (
 	"math"
 
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 func Pagination(limit, offset, total int) *sdk_opt.Pagination {

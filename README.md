@@ -6,12 +6,12 @@ Repository ini berisi shared SDK yang akan digunakan untuk pegembangan aplikasi 
 
 - ###  Install Latest Version
 ```sh
-go get github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1
+go get github.com/PT-UMKM-Pintar-Indonesia/shared-sdk
 ```
 
 - ### Install Specific Version
 ```sh
-go get github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1@v0.0.1
+go get github.com/PT-UMKM-Pintar-Indonesia/shared-sdk@v0.0.1
 ```
 
 ## Code Of Conduct

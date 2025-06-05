@@ -3,8 +3,8 @@ package sdk_inf
 import (
 	"crypto/rsa"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 )

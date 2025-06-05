@@ -1,8 +1,8 @@
 package sdk_inf
 
 import (
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type ISignature interface {

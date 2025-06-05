@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	"github.com/go-co-op/gocron/v2"
 )
 

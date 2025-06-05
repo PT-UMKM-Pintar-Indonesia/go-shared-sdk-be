@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	"github.com/wagslane/go-rabbitmq"
 )
 

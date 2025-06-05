@@ -1,6 +1,6 @@
 package sdk_dto
 
-import sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
+import sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 
 type Config struct {
 	ENV                 string `env:"GO_ENV" mapstructure:"GO_ENV"`

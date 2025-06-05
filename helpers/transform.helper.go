@@ -3,7 +3,7 @@ package sdk_helper
 import (
 	"os"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	"github.com/caarlos0/env"
 	"github.com/spf13/viper"
 )

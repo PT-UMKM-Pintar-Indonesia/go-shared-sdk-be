@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	goredis "github.com/redis/go-redis/v9"
 )
 
