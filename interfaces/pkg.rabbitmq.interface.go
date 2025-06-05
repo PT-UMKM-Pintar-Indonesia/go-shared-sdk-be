@@ -1,7 +1,7 @@
 package sdk_inf
 
 import (
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
 	"github.com/wagslane/go-rabbitmq"
 )
 

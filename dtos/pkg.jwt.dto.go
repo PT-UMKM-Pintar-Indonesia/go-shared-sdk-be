@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"time"
 
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
 )
 
 type (

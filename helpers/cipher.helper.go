@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
 	"golang.org/x/crypto/scrypt"
 )
 

@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/constants"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
+	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/helpers"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
 	"github.com/lithammer/shortuuid"
 	amqp "github.com/wagslane/go-rabbitmq"
 )

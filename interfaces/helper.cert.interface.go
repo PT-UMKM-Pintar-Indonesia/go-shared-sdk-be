@@ -1,8 +1,8 @@
 package sdk_inf
 
 import (
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
+	opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
 )
 
 type ICert interface {

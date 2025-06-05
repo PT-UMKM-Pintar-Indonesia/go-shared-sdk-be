@@ -1,4 +1,4 @@
-module github.com/PT-UMKM-Pintar-Indonesia/shared-sdk
+module github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1
 
 go 1.24.3
 

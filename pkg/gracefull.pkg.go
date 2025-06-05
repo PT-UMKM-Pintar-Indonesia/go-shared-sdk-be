@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/constants"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/outputs"
 	"github.com/ory/graceful"
 )
 

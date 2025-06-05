@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/interfaces"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"

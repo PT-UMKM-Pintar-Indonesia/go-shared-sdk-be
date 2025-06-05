@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/constants"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/v1/dtos"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
