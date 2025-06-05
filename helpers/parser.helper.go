@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -109,7 +110,7 @@ func (h parser) DecimalToFloat(n int64) float64 {
 }
 
 func (h parser) HtmlFileToStr(filename string, data any) (string, error) {
-	tmp, err := template.ParseFiles(filename + ".html")
+	tmp, err := template.ParseFS(os.DirFS(filename + ".html"))
 	if err != nil {
 		return "", err
 	}
