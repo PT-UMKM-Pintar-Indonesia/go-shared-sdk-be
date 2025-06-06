@@ -11,16 +11,17 @@ import (
 	"math"
 	"time"
 
+	goredis "github.com/redis/go-redis/v9"
+
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
-	goredis "github.com/redis/go-redis/v9"
 )
 
 type jsonWebToken struct {
-	env       *sdk_dto.Environtment
+	env       sdk_dto.Environtment[any]
 	rds       sdk_inf.IRedis
 	jose      sdk_inf.IJose
 	cipher    sdk_inf.ICrypto
@@ -29,7 +30,7 @@ type jsonWebToken struct {
 	transform sdk_inf.ITransform
 }
 
-func NewJsonWebToken(ctx context.Context, env *sdk_dto.Environtment, con *goredis.Client) sdk_inf.IJsonWebToken {
+func NewJsonWebToken(ctx context.Context, env sdk_dto.Environtment[any], con *goredis.Client) sdk_inf.IJsonWebToken {
 	jose := NewJose(ctx)
 
 	rds, err := NewRedis(ctx, con)

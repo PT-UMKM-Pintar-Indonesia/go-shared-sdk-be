@@ -10,9 +10,9 @@ import (
 )
 
 type (
-	ServiceOptions struct {
+	ServiceOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environtment[T]]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -22,9 +22,9 @@ type (
 		SERVICE T
 	}
 
-	ControllerOptions[T any] struct {
+	ControllerOptions[T any, U any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment]
+		ENV     Request[Environtment[U]]
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
@@ -32,9 +32,9 @@ type (
 		USECASE T
 	}
 
-	RouteOptions[T any] struct {
+	RouteOptions[T any, U any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment]
+		ENV        Request[Environtment[U]]
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -42,25 +42,25 @@ type (
 		CONTROLLER T
 	}
 
-	SchedulerOptions struct {
+	SchedulerOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environtment[T]]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
 	}
 
-	WorkerOptions struct {
+	WorkerOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environtment[T]]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
 	}
 
-	CallbackOptions[T any] struct {
+	CallbackOptions[T any, U any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment]
+		ENV        Request[Environtment[U]]
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -68,18 +68,18 @@ type (
 		CONTROLLER T
 	}
 
-	EventOptions[T any] struct {
+	EventOptions[T any, U any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment]
+		ENV     Request[Environtment[U]]
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
 		USECASE T
 	}
 
-	ModuleOptions struct {
+	ModuleOptions[T any] struct {
 		CTX    context.Context
-		ENV    Request[Environtment]
+		ENV    Request[Environtment[T]]
 		DB     *bun.DB
 		RDS    *redis.Client
 		AMQP   *rabbitmq.Conn
