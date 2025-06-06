@@ -16,7 +16,7 @@ import (
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
-func SqlConnection[T any](ctx context.Context, req sdk_dto.Request[sdk_dto.Environtment[T]]) (*bun.DB, error) {
+func SqlConnection(ctx context.Context, req sdk_dto.Request[sdk_dto.Environtment]) (*bun.DB, error) {
 	db := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(req.Config.POSTGRES.URL)))
 
 	if err := db.Ping(); err != nil {

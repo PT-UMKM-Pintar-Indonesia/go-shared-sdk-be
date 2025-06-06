@@ -8,7 +8,7 @@ import (
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
-func RedisConnection[T any](req sdk_dto.Request[sdk_dto.Environtment[T]]) (*redis.Client, error) {
+func RedisConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*redis.Client, error) {
 	parseURL, err := redis.ParseURL(req.Config.REDIS.URL)
 	if err != nil {
 		return nil, err

@@ -19,13 +19,13 @@ type Config struct {
 }
 
 type (
-	Environtment[T any] struct {
+	Environtment struct {
 		APP      sdk_opt.Application
 		REDIS    sdk_opt.Redis
 		POSTGRES sdk_opt.Postgres
 		JWT      sdk_opt.Jwt
 		RABBITMQ sdk_opt.RabbitMQ
 		SMTP     sdk_opt.Smtp
-		BIND     T
+		BIND     any
 	}
 )

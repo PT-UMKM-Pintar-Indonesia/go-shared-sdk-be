@@ -12,7 +12,7 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func Graceful(req sdk_dto.Request[sdk_dto.Environtment[any]], Handler func() sdk_opt.Graceful) error {
+func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.Graceful) error {
 	h := Handler()
 	secure := true
 

@@ -21,7 +21,7 @@ import (
 )
 
 type jsonWebToken struct {
-	env       sdk_dto.Environtment[any]
+	env       sdk_dto.Environtment
 	rds       sdk_inf.IRedis
 	jose      sdk_inf.IJose
 	cipher    sdk_inf.ICrypto
@@ -30,7 +30,7 @@ type jsonWebToken struct {
 	transform sdk_inf.ITransform
 }
 
-func NewJsonWebToken(ctx context.Context, env sdk_dto.Environtment[any], con *goredis.Client) sdk_inf.IJsonWebToken {
+func NewJsonWebToken(ctx context.Context, env sdk_dto.Environtment, con *goredis.Client) sdk_inf.IJsonWebToken {
 	jose := NewJose(ctx)
 
 	rds, err := NewRedis(ctx, con)

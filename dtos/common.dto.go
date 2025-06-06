@@ -12,7 +12,7 @@ import (
 type (
 	ServiceOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment[T]]
+		ENV  Request[Environtment]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -22,9 +22,9 @@ type (
 		SERVICE T
 	}
 
-	ControllerOptions[T any, U any] struct {
+	ControllerOptions[T any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment[U]]
+		ENV     Request[Environtment]
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
@@ -32,9 +32,9 @@ type (
 		USECASE T
 	}
 
-	RouteOptions[T any, U any] struct {
+	RouteOptions[T any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment[U]]
+		ENV        Request[Environtment]
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -44,7 +44,7 @@ type (
 
 	SchedulerOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment[T]]
+		ENV  Request[Environtment]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -52,15 +52,15 @@ type (
 
 	WorkerOptions[T any] struct {
 		CTX  context.Context
-		ENV  Request[Environtment[T]]
+		ENV  Request[Environtment]
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
 	}
 
-	CallbackOptions[T any, U any] struct {
+	CallbackOptions[T any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment[U]]
+		ENV        Request[Environtment]
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -68,9 +68,9 @@ type (
 		CONTROLLER T
 	}
 
-	EventOptions[T any, U any] struct {
+	EventOptions[T any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment[U]]
+		ENV     Request[Environtment]
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
@@ -79,7 +79,7 @@ type (
 
 	ModuleOptions[T any] struct {
 		CTX    context.Context
-		ENV    Request[Environtment[T]]
+		ENV    Request[Environtment]
 		DB     *bun.DB
 		RDS    *redis.Client
 		AMQP   *rabbitmq.Conn

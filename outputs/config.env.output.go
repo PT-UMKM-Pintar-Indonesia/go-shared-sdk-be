@@ -33,13 +33,13 @@ type (
 		PASSWORD string
 	}
 
-	Environtment[T any] struct {
+	Environtment struct {
 		APP      Application
 		REDIS    Redis
 		POSTGRES Postgres
 		JWT      Jwt
 		RABBITMQ RabbitMQ
 		SMTP     Smtp
-		BIND     T
+		BIND     any
 	}
 )

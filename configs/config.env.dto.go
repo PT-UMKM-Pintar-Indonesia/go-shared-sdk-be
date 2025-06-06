@@ -10,7 +10,7 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func NewEnvirontment[T any](name, path, ext string, bind any) (sdk_opt.Environtment[T], error) {
+func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, error) {
 	cfg := sdk_dto.Config{}
 
 	if _, ok := os.LookupEnv("GO_ENV"); !ok {
@@ -20,26 +20,26 @@ func NewEnvirontment[T any](name, path, ext string, bind any) (sdk_opt.Environtm
 		viper.AutomaticEnv()
 
 		if err := viper.ReadInConfig(); err != nil {
-			return sdk_opt.Environtment[T]{}, err
+			return sdk_opt.Environtment{}, err
 		}
 
 		if err := viper.Unmarshal(&cfg); err != nil {
-			return sdk_opt.Environtment[T]{}, err
+			return sdk_opt.Environtment{}, err
 		}
 
 		if bind != nil {
 			if err := viper.Unmarshal(&bind); err != nil {
-				return sdk_opt.Environtment[T]{}, err
+				return sdk_opt.Environtment{}, err
 			}
 		}
 
 	} else {
 		if err := genv.Parse(&cfg); err != nil {
-			return sdk_opt.Environtment[T]{}, err
+			return sdk_opt.Environtment{}, err
 		}
 	}
 
-	return sdk_opt.Environtment[T]{
+	return sdk_opt.Environtment{
 		APP: sdk_opt.Application{
 			ENV:          cfg.ENV,
 			PORT:         cfg.PORT,
@@ -65,6 +65,6 @@ func NewEnvirontment[T any](name, path, ext string, bind any) (sdk_opt.Environtm
 			USERNAME: cfg.SMTP_USERNAME,
 			PASSWORD: cfg.SMTP_PASSWORD,
 		},
-		BIND: any(bind).(T),
+		BIND: bind,
 	}, nil
 }
