@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	ServiceOptions[T any] struct {
+	ServiceOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
 		DB   *bun.DB
@@ -42,7 +42,7 @@ type (
 		CONTROLLER T
 	}
 
-	SchedulerOptions[T any] struct {
+	SchedulerOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
 		DB   *bun.DB
@@ -50,7 +50,7 @@ type (
 		AMQP *rabbitmq.Conn
 	}
 
-	WorkerOptions[T any] struct {
+	WorkerOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
 		DB   *bun.DB
@@ -77,7 +77,7 @@ type (
 		USECASE T
 	}
 
-	ModuleOptions[T any] struct {
+	ModuleOptions struct {
 		CTX    context.Context
 		ENV    Request[Environtment]
 		DB     *bun.DB
