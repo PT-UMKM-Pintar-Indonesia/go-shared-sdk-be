@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	"github.com/wagslane/go-rabbitmq"
+
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
 func RabbitConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*rabbitmq.Conn, error) {

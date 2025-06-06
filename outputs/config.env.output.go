@@ -40,5 +40,6 @@ type (
 		JWT      Jwt
 		RABBITMQ RabbitMQ
 		SMTP     Smtp
+		BIND     any
 	}
 )

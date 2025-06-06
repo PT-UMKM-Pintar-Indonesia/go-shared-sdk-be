@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ory/graceful"
+
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
-	"github.com/ory/graceful"
 )
 
 func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.Graceful) error {
