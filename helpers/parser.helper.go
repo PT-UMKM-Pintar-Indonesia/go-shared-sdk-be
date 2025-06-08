@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 )
 
 type parser struct{}
@@ -110,7 +110,7 @@ func (h parser) DecimalToFloat(n int64) float64 {
 }
 
 func (h parser) HtmlFileToStr(filename string, data any) (string, error) {
-	tmp, err := template.ParseFS(os.DirFS(filename + ".html"))
+	tmp, err := template.ParseFiles(filename + ".html")
 	if err != nil {
 		return "", err
 	}
