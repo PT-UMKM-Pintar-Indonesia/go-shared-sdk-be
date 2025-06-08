@@ -88,7 +88,7 @@ func (p jsonWebToken) createSecret(prefix string, body []byte) (*sdk_opt.SecretM
 	secretMetadataReq.PrivKeyRaw = string(privateKey.KeyRawPrivate)
 	secretMetadataReq.CipherKey = cipherKey
 
-	if err := p.transform.ReqToRes(secretMetadataReq, secretMetadataRes); err != nil {
+	if err := p.transform.SrcToDest(secretMetadataReq, secretMetadataRes); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +160,7 @@ func (p jsonWebToken) createSignature(prefix string, body any) (*sdk_opt.Signatu
 		return nil, err
 	}
 
-	if err := p.transform.ReqToRes(signatureMetadataReq, signatureMetadataRes); err != nil {
+	if err := p.transform.SrcToDest(signatureMetadataReq, signatureMetadataRes); err != nil {
 		return nil, err
 	}
 

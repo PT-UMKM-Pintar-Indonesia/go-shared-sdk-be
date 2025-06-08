@@ -1,6 +1,8 @@
 package sdk_cons
 
 const (
+	WARN  = "wanr"
+	TRACE = "trace"
 	INFO  = "info"
 	ERROR = "error"
 	PRINT = "print"

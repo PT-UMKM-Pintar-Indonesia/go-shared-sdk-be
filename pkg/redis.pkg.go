@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	goredis "github.com/redis/go-redis/v9"
+
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 )
 
 type redis struct {
@@ -15,6 +17,16 @@ type redis struct {
 
 func NewRedis(ctx context.Context, con *goredis.Client) (sdk_inf.IRedis, error) {
 	return &redis{redis: con, ctx: ctx}, nil
+}
+
+func (p redis) Set(key string, value any) error {
+	cmd := p.redis.Set(p.ctx, key, value, 0)
+
+	if err := cmd.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p redis) SetEx(key string, expiration time.Duration, value any) error {
@@ -56,6 +68,39 @@ func (p redis) Exists(key string) (int64, error) {
 	}
 
 	return cmd.Val(), nil
+}
+
+func (p redis) MSet(values ...any) (string, error) {
+	cmd := p.redis.MSet(p.ctx, values...)
+
+	if err := cmd.Err(); err != nil {
+		return sdk_cons.EMPTY, err
+	}
+
+	res := cmd.Val()
+	return res, nil
+}
+
+func (p redis) MSetNX(values ...any) (bool, error) {
+	cmd := p.redis.MSetNX(p.ctx, values...)
+
+	if err := cmd.Err(); err != nil {
+		return sdk_cons.FALSE, err
+	}
+
+	res := cmd.Val()
+	return res, nil
+}
+
+func (p redis) MGet(key string) ([]any, error) {
+	cmd := p.redis.MGet(p.ctx, key)
+
+	if err := cmd.Err(); err != nil {
+		return nil, err
+	}
+
+	res := cmd.Val()
+	return res, nil
 }
 
 func (p redis) HSet(key string, values ...any) error {

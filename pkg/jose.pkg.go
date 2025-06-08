@@ -7,15 +7,16 @@ import (
 	"fmt"
 	"reflect"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwe"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jwt"
+
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type jose struct {
@@ -53,7 +54,7 @@ func (p jose) JweEncrypt(publicKey *rsa.PublicKey, plainText string) ([]byte, *s
 		return nil, nil, err
 	}
 
-	if err := p.transform.ReqToRes(jweEncryptMetadataReq, jweEncryptMetadataRes); err != nil {
+	if err := p.transform.SrcToDest(jweEncryptMetadataReq, jweEncryptMetadataRes); err != nil {
 		return nil, nil, err
 	}
 
@@ -105,7 +106,7 @@ func (p jose) ImportJsonWebKey(jwkKey jwk.Key) (*sdk_opt.JwkMetadata, error) {
 		return nil, err
 	}
 
-	if err := p.transform.ReqToRes(&jwkRawMetadataReq, &jwkRawMetadataRes); err != nil {
+	if err := p.transform.SrcToDest(&jwkRawMetadataReq, &jwkRawMetadataRes); err != nil {
 		return nil, err
 	}
 
@@ -140,7 +141,7 @@ func (p jose) ExportJsonWebKey(privateKey *rsa.PrivateKey) (*sdk_opt.JwkMetadata
 		return nil, err
 	}
 
-	if err := p.transform.ReqToRes(&jwkRawMetadataReq, &jwkRawMetadataRes); err != nil {
+	if err := p.transform.SrcToDest(&jwkRawMetadataReq, &jwkRawMetadataRes); err != nil {
 		return nil, err
 	}
 

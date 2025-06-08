@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -49,8 +50,6 @@ func (p signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.Signa
 			return
 		}
 
-		break
-
 	case sdk_cons.PRIVPKCS8:
 		privateKeyRawToKeyReq.KeyType = req.PrivateKeyType
 		privateKeyRawToKeyReq.KeyRawPrivate = req.PrivateKey
@@ -61,8 +60,6 @@ func (p signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.Signa
 			res.Error = privateKeyRawToKeyRes.Error
 			return
 		}
-
-		break
 
 	default:
 		res.Error = errors.New("Invalid GenerateAsymmetric PEM PrivateKey certificate unsupported")
@@ -124,7 +121,7 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 
 	switch req.PublicKeyType {
 
-	case sdk_cons.PRIVPKCS1:
+	case sdk_cons.PUBPKCS1:
 		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
 		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
 
@@ -134,9 +131,7 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 			return
 		}
 
-		break
-
-	case sdk_cons.PRIVPKCS8:
+	case sdk_cons.PUBPKCS8:
 		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
 		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
 
@@ -145,8 +140,6 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 			res.Error = publicKeyRawToKeyRes.Error
 			return
 		}
-
-		break
 
 	default:
 		res.Error = errors.New("Invalid VerifyAsymmetric PEM PublicKey certificate unsupported")
@@ -155,13 +148,13 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 
 	decodeSignature, err := base64.StdEncoding.DecodeString(req.Signature)
 	if err != nil {
-		res.Error = errors.New("Invalid signature")
+		res.Error = errors.New("Invalid to decoded signature")
 		return
 	}
 
 	err = rsa.VerifyPKCS1v15(publicKeyRawToKeyRes.KeyPublic, cpt.SHA256, cipherBodyHash, decodeSignature)
 	if err != nil {
-		res.Error = errors.New("Invalid signature")
+		res.Error = errors.New("Unverified signature unmatch PEM PublicKey certificate unsupported")
 		return
 	}
 
@@ -170,7 +163,6 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 }
 
 func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
-	cert := NewCert()
 	cipherBodyHash256 := sha256.New()
 
 	if _, err := cipherBodyHash256.Write(req.Body); err != nil {
@@ -179,52 +171,6 @@ func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.Sign
 	}
 
 	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	publicKeyRawToKeyReq := sdk_dto.PublicKeyRawToKey{}
-	publicKeyRawToKeyRes := sdk_opt.CertResponse{}
-
-	switch req.PublicKeyType {
-
-	case sdk_cons.PRIVPKCS1:
-		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
-		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
-
-		publicKeyRawToKeyRes = cert.PublicKeyRawToKey(publicKeyRawToKeyReq)
-		if publicKeyRawToKeyRes.Error != nil {
-			res.Error = publicKeyRawToKeyRes.Error
-			return
-		}
-
-		break
-
-	case sdk_cons.PRIVPKCS8:
-		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
-		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
-
-		publicKeyRawToKeyRes = cert.PublicKeyRawToKey(publicKeyRawToKeyReq)
-		if publicKeyRawToKeyRes.Error != nil {
-			res.Error = publicKeyRawToKeyRes.Error
-			return
-		}
-
-		break
-
-	default:
-		res.Error = errors.New("Invalid VerifySymmetric PEM PublicKey certificate unsupported")
-		return
-	}
-
-	decodeSignature, err := base64.StdEncoding.DecodeString(req.Signature)
-	if err != nil {
-		res.Error = errors.New("Invalid signature")
-		return
-	}
-
-	err = rsa.VerifyPKCS1v15(publicKeyRawToKeyRes.KeyPublic, cpt.SHA256, cipherBodyHash, decodeSignature)
-	if err != nil {
-		res.Error = errors.New("Invalid signature")
-		return
-	}
-
 	sha256SecretKey := strings.ToLower(hex.EncodeToString(cipherBodyHash))
 
 	hmac512Body := req.Method + ":" + req.Url + ":" + req.AccessToken + ":" + sha256SecretKey + ":" + req.TimeStamp
@@ -238,7 +184,7 @@ func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.Sign
 	res.Signature = base64.StdEncoding.EncodeToString(hmac512.Sum(nil))
 
 	if ok := reflect.DeepEqual(req.Signature, res.Signature); !ok {
-		res.Error = errors.New("Invalid signature")
+		res.Error = fmt.Errorf("Unmatch signature request: %s between internal signature: %s", req.Signature, res.Signature)
 		return
 	}
 

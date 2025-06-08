@@ -10,11 +10,9 @@ import (
 	"strings"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
-
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type cert struct{}
@@ -123,7 +121,7 @@ func (p cert) PublicKeyRawToKey(req sdk_dto.PublicKeyRawToKey) (res sdk_opt.Cert
 		return
 	}
 
-	if req.KeyType == sdk_cons.PRIVPKCS1 {
+	if req.KeyType == sdk_cons.PUBPKCS1 {
 		publicKey, err := x509.ParsePKCS1PublicKey(decodePemBlock.Bytes)
 		if err != nil {
 			res.Error = err

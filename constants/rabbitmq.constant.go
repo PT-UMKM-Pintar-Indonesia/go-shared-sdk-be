@@ -17,8 +17,6 @@ const (
 )
 
 const (
-	EXCHANGE_NAME_DIRECT            = "amq.direct"
-	EXCHANGE_NAME_TOPIC             = "amq.topic"
-	EXCHANGE_NAME_SEARCH            = "amqp.worker"
-	EXCHANGE_NAME_DEAD_LETTER_QUEUE = "amqp.worker.dlq"
+	EXCHANGE_NAME_DIRECT = "amq.direct"
+	EXCHANGE_NAME_TOPIC  = "amq.topic"
 )

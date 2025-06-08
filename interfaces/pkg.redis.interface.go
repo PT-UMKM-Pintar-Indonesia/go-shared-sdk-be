@@ -7,10 +7,14 @@ import (
 )
 
 type IRedis interface {
+	Set(key string, value any) error
 	SetEx(key string, expiration time.Duration, value any) error
 	Get(key string) ([]byte, error)
 	Del(key string) (int64, error)
 	Exists(key string) (int64, error)
+	MSet(values ...any) (string, error)
+	MSetNX(values ...any) (bool, error)
+	MGet(key string) ([]any, error)
 	HSet(key string, values ...any) error
 	HSetEx(key string, expiration time.Duration, values ...any) error
 	HGet(key string, field string) ([]byte, error)
