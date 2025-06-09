@@ -8,11 +8,21 @@ type (
 	}
 
 	Redis struct {
-		URL string
+		URL      string
+		HOST     string
+		PORT     int
+		USER     string
+		PASSWORD string
+		DB       string
 	}
 
 	Postgres struct {
-		URL string
+		URL      string
+		HOST     string
+		PORT     int
+		USER     string
+		PASSWORD string
+		DB       string
 	}
 
 	Jwt struct {
@@ -21,9 +31,13 @@ type (
 	}
 
 	RabbitMQ struct {
-		URL    string
-		VSN    string
-		SECRET string
+		URL      string
+		VSN      string
+		HOST     string
+		PORT     int
+		USER     string
+		PASSWORD string
+		SECRET   string
 	}
 
 	Smtp struct {
