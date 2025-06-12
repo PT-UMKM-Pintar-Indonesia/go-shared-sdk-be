@@ -12,7 +12,7 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.Graceful) error {
+func Graceful(req sdk_dto.Request[sdk_dto.Environtment], port string, Handler func() sdk_opt.Graceful) error {
 	h := Handler()
 	secure := true
 
@@ -22,11 +22,11 @@ func Graceful(req sdk_dto.Request[sdk_dto.Environtment], Handler func() sdk_opt.
 
 	server := http.Server{
 		Handler:        h.HANDLER,
-		Addr:           ":" + req.Config.APP.PORT,
+		Addr:           ":" + port,
 		MaxHeaderBytes: req.Config.APP.INBOUND_SIZE,
 		TLSConfig:      &tls.Config{InsecureSkipVerify: secure},
 	}
 
-	Logrus(sdk_cons.INFO, "Server listening on port %s", req.Config.APP.PORT)
+	Logrus(sdk_cons.INFO, "Server listening on port %s", port)
 	return graceful.Graceful(server.ListenAndServe, server.Shutdown)
 }

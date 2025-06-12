@@ -13,6 +13,7 @@ type (
 	ServiceOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
+		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -25,6 +26,7 @@ type (
 	ControllerOptions[T any] struct {
 		CTX     context.Context
 		ENV     Request[Environtment]
+		ENVB    any
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
@@ -35,6 +37,7 @@ type (
 	RouteOptions[T any] struct {
 		CTX        context.Context
 		ENV        Request[Environtment]
+		ENVB       any
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -45,6 +48,7 @@ type (
 	SchedulerOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
+		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -53,6 +57,7 @@ type (
 	WorkerOptions struct {
 		CTX  context.Context
 		ENV  Request[Environtment]
+		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client
 		AMQP *rabbitmq.Conn
@@ -61,6 +66,7 @@ type (
 	CallbackOptions[T any] struct {
 		CTX        context.Context
 		ENV        Request[Environtment]
+		ENVB       any
 		DB         *bun.DB
 		RDS        *redis.Client
 		AMQP       *rabbitmq.Conn
@@ -71,6 +77,7 @@ type (
 	EventOptions[T any] struct {
 		CTX     context.Context
 		ENV     Request[Environtment]
+		ENVB    any
 		DB      *bun.DB
 		RDS     *redis.Client
 		AMQP    *rabbitmq.Conn
@@ -80,10 +87,20 @@ type (
 	ModuleOptions struct {
 		CTX    context.Context
 		ENV    Request[Environtment]
+		ENVB   any
 		DB     *bun.DB
 		RDS    *redis.Client
 		AMQP   *rabbitmq.Conn
 		ROUTER chi.Router
+	}
+
+	HelperOptions struct {
+		CTX  context.Context
+		ENV  Request[Environtment]
+		ENVB any
+		DB   *bun.DB
+		RDS  *redis.Client
+		AMQP *rabbitmq.Conn
 	}
 )
 

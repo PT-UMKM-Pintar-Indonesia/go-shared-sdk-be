@@ -10,13 +10,20 @@ const (
 )
 
 const (
-	EXCHANGE_TYPE_DIRECT = "direct"
-	EXCHANGE_TYPE_FANOUT = "fanout"
-	EXCHANGE_TYPE_TOPIC  = "topic"
-	EXCHANGE_TYPE_HEADER = "header"
+	EXCHANGE_TYPE_DIRECT  = "direct"
+	EXCHANGE_TYPE_FANOUT  = "fanout"
+	EXCHANGE_TYPE_TOPIC   = "topic"
+	EXCHANGE_TYPE_HEADERS = "headers"
 )
 
 const (
-	EXCHANGE_NAME_DIRECT = "amq.direct"
-	EXCHANGE_NAME_TOPIC  = "amq.topic"
+	EXCHANGE_NAME_DIRECT  = "amq.direct"
+	EXCHANGE_NAME_TOPIC   = "amq.topic"
+	EXCHANGE_NAME_FANOUT  = "amq.fanout"
+	EXCHANGE_NAME_HEADERS = "amq.headers"
+)
+
+const (
+	RPC  = "rpc"
+	NRPC = "nrpc"
 )
