@@ -20,6 +20,7 @@ var errorCodeMapping = map[int]string{
 	http.StatusBadGateway:          "SERVICE_ERROR",
 	http.StatusServiceUnavailable:  "SERVICE_UNAVAILABLE",
 	http.StatusGatewayTimeout:      "SERVICE_TIMEOUT",
+	http.StatusRequestTimeout:      "SERVICE_TIMEOUT",
 	http.StatusConflict:            "DUPLICATE_RESOURCE",
 	http.StatusBadRequest:          "INVALID_REQUEST",
 	http.StatusUnprocessableEntity: "INVALID_REQUEST",

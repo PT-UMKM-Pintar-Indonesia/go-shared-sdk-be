@@ -17,6 +17,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.3 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
@@ -61,6 +62,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-oauth2/oauth2/v4 v4.5.3
 	github.com/google/uuid v1.6.0
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/lestrrat-go/jwx/v3 v3.0.2
 	github.com/lib/pq v1.10.9
