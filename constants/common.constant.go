@@ -28,6 +28,9 @@ const (
 	UPDATE = "update"
 	INSERT = "insert"
 	DELETE = "delete"
+
+	ACTIVE   = "active"
+	INACTIVE = "inactive"
 )
 
 const (
