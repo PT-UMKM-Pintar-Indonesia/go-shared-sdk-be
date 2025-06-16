@@ -6,7 +6,7 @@ const (
 	FAILED          = "failed"
 	EXPIRED         = "expired"
 	REFUNDED        = "refunded"
-	SUCCEEDED       = "succeeded"
+	SUCCEED         = "succeed"
 	OBSCURED        = "obscured"
 	SENDED          = "sended"
 	UNSENDED        = "unsended"
@@ -16,6 +16,7 @@ const (
 	SETTLED         = "settled"
 	PENDING_SETTLED = "pending_settled"
 	AUTHORIZED      = "authorized"
+	INQUIRED        = "inquired"
 )
 
 const (
@@ -37,8 +38,11 @@ const (
 )
 
 const (
-	DEBIT  = "debitor"
-	CREDIT = "creditor"
+	DEBITOR  = "debitor"
+	CREDITOR = "creditor"
+
+	DEBIT  = "debit"
+	CREDIT = "credit"
 )
 
 const (

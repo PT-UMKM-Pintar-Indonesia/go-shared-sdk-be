@@ -24,6 +24,15 @@ type (
 		VaNumber          string  `json:"va_number,omitempty"`
 		NetworkID         string  `json:"network_id,omitempty"`
 		PartnerID         string  `json:"partner_id,omitempty"`
+		NetworkReference  string  `json:"network_reference,omitempty"`
+		NetworkData       any     `json:"network_data,omitempty"`
+		AccountID         string  `json:"account_id,omitempty"`
+		DepositID         string  `json:"deposit_id,omitempty"`
+		FeeAmount         float64 `json:"fee_amount,omitempty"`
+		TotalAmount       float64 `json:"total_amount,omitempty"`
+		AddressNumber     string  `json:"address_number,omitempty"`
+		AddressName       string  `json:"address_name,omitempty"`
+		RequestData       any     `json:"request_data,omitempty"`
 	}
 
 	CallbackTransaction struct {
@@ -37,8 +46,9 @@ type (
 		Status            string `json:"status"`
 		StatusMessage     string `json:"status_message"`
 		NetworkData       any    `json:"network_data,omitempty"`
-		NetworkReference  any    `json:"network_reference,omitempty"`
+		NetworkReference  string `json:"network_reference,omitempty"`
 		PaymentVerifiedAt string `json:"payment_verified_at"`
 		IsPaid            bool   `json:"is_paid"`
+		RequestData       any    `json:"request_data,omitempty"`
 	}
 )
