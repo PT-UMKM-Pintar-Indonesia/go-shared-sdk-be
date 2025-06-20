@@ -34,6 +34,7 @@ type (
 		AddressNumber     string  `json:"address_number,omitempty"`
 		AddressName       string  `json:"address_name,omitempty"`
 		RequestData       any     `json:"request_data,omitempty"`
+		FeeType           string  `json:"fee_type,omitempty"`
 	}
 
 	CallbackTransaction struct {
