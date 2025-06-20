@@ -24,6 +24,7 @@ type (
 		VaNumber          string  `json:"va_number,omitempty"`
 		NetworkID         string  `json:"network_id,omitempty"`
 		PartnerID         string  `json:"partner_id,omitempty"`
+		StatusMessage     string  `json:"status_message,omitempty"`
 		NetworkReference  string  `json:"network_reference,omitempty"`
 		NetworkData       any     `json:"network_data,omitempty"`
 		AccountID         string  `json:"account_id,omitempty"`
