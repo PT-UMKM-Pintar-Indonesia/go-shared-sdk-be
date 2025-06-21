@@ -16,7 +16,7 @@ const (
 	SETTLED         = "settled"
 	PENDING_SETTLED = "pending_settled"
 	AUTHORIZED      = "authorized"
-	INQUIRED        = "inquired"
+	INQUIRIED       = "inquiried"
 )
 
 const (
