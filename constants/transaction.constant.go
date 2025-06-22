@@ -20,6 +20,7 @@ const (
 )
 
 const (
+	WAITING            = "waiting"
 	CREATE             = "create"
 	SUCCESS            = "success"
 	PROCESS            = "process"
@@ -35,6 +36,16 @@ const (
 	COMPLETE           = "complete"
 	SETTLEMENT         = "settlement"
 	PENDING_SETTLEMENT = "pending_settlement"
+)
+
+const (
+	DRAFT    = "draft"
+	REVIEW   = "review"
+	APPROVED = "approved"
+	UNPAID   = "unpaid"
+	REJECTED = "rejected"
+	DELETED  = "deleted"
+	HISTORY  = "history"
 )
 
 const (
