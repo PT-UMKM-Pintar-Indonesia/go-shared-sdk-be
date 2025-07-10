@@ -36,6 +36,7 @@ const (
 	COMPLETE           = "complete"
 	SETTLEMENT         = "settlement"
 	PENDING_SETTLEMENT = "pending_settlement"
+	INCOMPLETE         = "incomplete"
 )
 
 const (
