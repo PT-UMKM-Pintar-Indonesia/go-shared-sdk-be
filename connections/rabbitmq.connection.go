@@ -2,7 +2,6 @@ package sdk_con
 
 import (
 	"crypto/tls"
-	"net/http"
 	"time"
 
 	"github.com/wagslane/go-rabbitmq"
@@ -11,14 +10,14 @@ import (
 )
 
 func RabbitConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*rabbitmq.Conn, error) {
-	interval := time.Duration(time.Second * 5)
+	interval := time.Duration(time.Second * 30)
 
 	return rabbitmq.NewConn(req.Config.RABBITMQ.URL,
 		rabbitmq.WithConnectionOptionsLogging,
 		rabbitmq.WithConnectionOptionsReconnectInterval(interval),
 		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
 			Vhost:           req.Config.RABBITMQ.VSN,
-			FrameSize:       http.DefaultMaxHeaderBytes * 5,
+			FrameSize:       1073741824,
 			Heartbeat:       interval,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}))
