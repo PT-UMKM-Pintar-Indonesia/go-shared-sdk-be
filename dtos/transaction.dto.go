@@ -59,7 +59,7 @@ type (
 		RequestData       any    `json:"request_data,omitempty"`
 		FeeType           string `json:"fee_type,omitempty"`
 		MerchantID        string `json:"merchant_id,omitempty"`
-		WebhookUrl        string `json:"webhook_url"`
+		WebhookUrl        string `json:"webhook_url,omitempty"`
 		AdditionalInfo    any    `json:"additional_info,omitempty"`
 		VaNumber          string `json:"va_number,omitempty"`
 	}
