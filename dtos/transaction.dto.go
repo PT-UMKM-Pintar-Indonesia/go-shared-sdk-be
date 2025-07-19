@@ -43,15 +43,24 @@ type (
 		PartnerID         string `json:"partner_id,omitempty"`
 		Amount            any    `json:"amount"`
 		FeeAmount         any    `json:"fee_amount"`
-		Bank              string `json:"bank"`
-		Channel           string `json:"channel"`
-		ExternalID        string `json:"external_id"`
+		Bank              string `json:"bank,omitempty"`
+		Channel           string `json:"channel,omitempty"`
+		ExternalID        string `json:"external_id,omitempty"`
 		Status            string `json:"status"`
-		StatusMessage     string `json:"status_message"`
+		StatusMessage     string `json:"status_message,omitempty"`
 		NetworkData       any    `json:"network_data,omitempty"`
+		AccountID         string `json:"account_id,omitempty"`
 		NetworkReference  string `json:"network_reference,omitempty"`
 		PaymentVerifiedAt string `json:"payment_verified_at"`
 		IsPaid            bool   `json:"is_paid"`
+		RequestID         string `json:"request_id"`
+		AddressNumber     string `json:"address_number,omitempty"`
+		AddressName       string `json:"address_name,omitempty"`
 		RequestData       any    `json:"request_data,omitempty"`
+		FeeType           string `json:"fee_type,omitempty"`
+		MerchantID        string `json:"merchant_id,omitempty"`
+		WebhookUrl        string `json:"webhook_url"`
+		AdditionalInfo    any    `json:"additional_info,omitempty"`
+		VaNumber          string `json:"va_number,omitempty"`
 	}
 )
