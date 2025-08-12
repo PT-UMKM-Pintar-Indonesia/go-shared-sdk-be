@@ -410,7 +410,7 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(p.ctx, time.Second*time.Duration(300))
+	ctx, cancel := context.WithTimeout(p.ctx, time.Second*time.Duration(500))
 	defer cancel()
 
 	select {
