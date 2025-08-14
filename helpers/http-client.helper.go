@@ -8,8 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -105,14 +103,14 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	body := bodyBuf.Bytes()
 	defer httpRes.Body.Close()
 
-	rbody := strings.ToLower(string(body))
-	if ok, _ := regexp.MatchString("(?i)(504|524|timeout|time-out|nginx|cloudflare)", rbody); ok {
-		res.StatCode = http.StatusRequestTimeout
-		res.ErrMsg = "Network Timeout"
-		res.Data = string(body)
+	// rbody := strings.ToLower(string(body))
+	// if ok, _ := regexp.MatchString("(?i)(504|524|timeout|time-out|nginx|cloudflare)", rbody); ok {
+	// 	res.StatCode = http.StatusRequestTimeout
+	// 	res.ErrMsg = "Network Timeout"
+	// 	res.Data = string(body)
 
-		return
-	}
+	// 	return
+	// }
 
 	res.StatCode = http.StatusOK
 	res.Data = io.NopCloser(bytes.NewBuffer(body))
