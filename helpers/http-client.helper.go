@@ -81,9 +81,9 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	}
 
 	body := bodyBuf.Bytes()
-	if strings.Contains(strings.ToLower(string(body)), "html") {
+	if strings.Contains(strings.ToLower(string(body)), "504") || strings.Contains(strings.ToLower(string(body)), "time-out") {
 		res.StatCode = http.StatusRequestTimeout
-		res.ErrMsg = "Network Error"
+		res.ErrMsg = "Network Timeout"
 		res.Data = string(body)
 
 		return
