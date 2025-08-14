@@ -2,15 +2,14 @@ package sdk_helper
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -20,24 +19,48 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-var (
-	clientPool sync.Pool
-	clientOnce sync.Once
-)
-
 type httpClient struct {
 	standart *http.Client
 }
 
 func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
-	standart := getHttpClientPool(options)
-	defer putHttpClientToPool(standart)
+	client := retryablehttp.NewClient()
 
 	parser := NewParser()
+	standart := client.StandardClient()
+
+	if options.Transport != nil {
+		client.HTTPClient.Transport = options.Transport
+	}
 
 	httpClient := httpClient{standart: standart}
 	httpRes := new(http.Response)
 	httpErr := error(nil)
+
+	client.RetryWaitMin = 3 * time.Second
+	client.RetryWaitMax = 5 * time.Second
+	client.RetryMax = 5
+	client.Backoff = retryablehttp.DefaultBackoff
+
+	httpClient.httpClientConfig(client, options.Configs)
+
+	client.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, i int) {
+		lgr, err := httputil.DumpRequestOut(r, true)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		logrus.Info(fmt.Sprintf("\nHTTP REQUEST: \n%s", string(lgr)))
+	}
+
+	client.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
+		lgr, err := httputil.DumpResponse(r, true)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		logrus.Info(fmt.Sprintf("\nHTTP RESPONSE: \n%s", string(lgr)))
+	}
 
 	if options.Body == nil {
 		options.Body = bytes.NewReader(nil)
@@ -81,7 +104,9 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	}
 
 	body := bodyBuf.Bytes()
-	if strings.Contains(strings.ToLower(string(body)), "504") || strings.Contains(strings.ToLower(string(body)), "time-out") {
+	rbody := strings.ToLower(string(body))
+
+	if ok, _ := regexp.MatchString("(?i)(504|524|timeout|time-out|nginx|cloudflare)", rbody); ok {
 		res.StatCode = http.StatusRequestTimeout
 		res.ErrMsg = "Network Timeout"
 		res.Data = string(body)
@@ -125,7 +150,6 @@ func (h httpClient) httpClientError(err error) (res sdk_opt.Response) {
 	if err == nil {
 		res.StatCode = http.StatusOK
 		res.Message = "Network Success"
-
 		return
 	}
 
@@ -145,69 +169,8 @@ func (h httpClient) httpClientError(err error) (res sdk_opt.Response) {
 		return
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) {
-		res.StatCode = http.StatusGatewayTimeout
-		res.ErrMsg = "Network Timeout"
-
-		return
-	}
-
 	res.StatCode = http.StatusBadRequest
 	res.Message = err.Error()
 
 	return
-}
-
-func retryablehttpClient(options sdk_dto.HttpClientOptions) *http.Client {
-	client := retryablehttp.NewClient()
-	standart := client.StandardClient()
-
-	if options.Transport != nil {
-		client.HTTPClient.Transport = options.Transport
-	}
-
-	httpClient := httpClient{standart: standart}
-
-	client.RetryWaitMin = 3 * time.Second
-	client.RetryWaitMax = 5 * time.Second
-	client.RetryMax = 5
-	client.Backoff = retryablehttp.DefaultBackoff
-
-	httpClient.httpClientConfig(client, options.Configs)
-
-	client.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, i int) {
-		lgr, err := httputil.DumpRequestOut(r, true)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-		logrus.Info(fmt.Sprintf("\nHTTP REQUEST: \n%s", string(lgr)))
-	}
-
-	client.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
-		lgr, err := httputil.DumpResponse(r, true)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-		logrus.Info(fmt.Sprintf("\nHTTP RESPONSE: \n%s", string(lgr)))
-	}
-
-	return standart
-}
-
-func getHttpClientPool(options sdk_dto.HttpClientOptions) *http.Client {
-	clientOnce.Do(func() {
-		clientPool = sync.Pool{
-			New: func() interface{} {
-				return retryablehttpClient(options)
-			},
-		}
-	})
-
-	return clientPool.Get().(*http.Client)
-}
-
-func putHttpClientToPool(client *http.Client) {
-	clientPool.Put(client)
 }
