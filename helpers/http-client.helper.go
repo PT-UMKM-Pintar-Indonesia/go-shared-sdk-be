@@ -92,26 +92,15 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	if res = httpClient.httpClientError(httpErr); res.StatCode >= http.StatusBadRequest {
 		return
 	}
-	defer httpRes.Body.Close()
 
 	bodyBuf := bytes.NewBuffer(make([]byte, 0, 4096))
-	body := bodyBuf.Bytes()
-
 	_, err = io.Copy(bodyBuf, httpRes.Body)
 	if res = httpClient.httpClientError(err); res.StatCode >= http.StatusBadRequest {
-		res.Data = body
-
 		return
 	}
 
-	// rbody := strings.ToLower(string(body))
-	// if ok, _ := regexp.MatchString("(?i)(504|524|timeout|time-out|nginx|cloudflare)", rbody); ok {
-	// 	res.StatCode = http.StatusRequestTimeout
-	// 	res.ErrMsg = "Network Timeout"
-	// 	res.Data = string(body)
-
-	// 	return
-	// }
+	body := bodyBuf.Bytes()
+	defer httpRes.Body.Close()
 
 	res.StatCode = http.StatusOK
 	res.Data = io.NopCloser(bytes.NewBuffer(body))
