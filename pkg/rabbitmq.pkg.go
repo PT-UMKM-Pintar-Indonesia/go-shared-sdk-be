@@ -140,6 +140,10 @@ func (p rabbitmq) listeningConsumerRPC(req sdk_dto.RabbitOptions) (*amqp.Consume
 		req.Prefetch = 5
 	}
 
+	if req.Args == nil {
+		req.Args = amqp.Table{"x-max-length": 10000, "x-message-ttl": 3600000}
+	}
+
 	consumer, err := amqp.NewConsumer(p.rabbitmq, func(d amqp.Delivery) (action amqp.Action) {
 		if d.CorrelationId == sdk_cons.EMPTY {
 			return amqp.NackDiscard
@@ -154,6 +158,7 @@ func (p rabbitmq) listeningConsumerRPC(req sdk_dto.RabbitOptions) (*amqp.Consume
 	}, req.ReplyTo,
 		amqp.WithConsumerOptionsExchangeName(req.ExchangeName),
 		amqp.WithConsumerOptionsExchangeKind(req.ExchangeType),
+		amqp.WithConsumerOptionsQueueDurable,
 		amqp.WithConsumerOptionsConsumerExclusive,
 		amqp.WithConsumerOptionsQueueAutoDelete,
 		amqp.WithConsumerOptionsConsumerName(req.ConsumerID),
@@ -191,10 +196,6 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 
 	if time.Until(req.Option.Timestamp) < 1 {
 		req.Option.Timestamp = time.Now().Local()
-	}
-
-	if req.Option.Expired == sdk_cons.EMPTY {
-		req.Option.Expired = "60"
 	}
 
 	res := make(chan []byte, 1000)
@@ -257,7 +258,7 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(p.ctx, time.Second*time.Duration(500))
+	ctx, cancel := context.WithTimeout(p.ctx, time.Second*time.Duration(3600000))
 	defer cancel()
 
 	select {
