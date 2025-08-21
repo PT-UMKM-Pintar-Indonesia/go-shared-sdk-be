@@ -61,6 +61,14 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			PASSWORD: cfg.PG_PASSWORD,
 			DB:       cfg.PG_DB,
 		},
+		MYSQL: sdk_opt.Mysql{
+			URL:      cfg.MYSQL_DSN,
+			HOST:     cfg.MYSQL_HOST,
+			PORT:     cfg.MYSQL_PORT,
+			USER:     cfg.MYSQL_USER,
+			PASSWORD: cfg.MYSQL_PASSWORD,
+			DB:       cfg.MYSQL_DB,
+		},
 		JWT: sdk_opt.Jwt{
 			SECRET:  cfg.JWT_SECRET_KEY,
 			EXPIRED: cfg.JWT_EXPIRED,

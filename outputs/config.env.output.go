@@ -60,6 +60,7 @@ type (
 		APP      Application
 		REDIS    Redis
 		POSTGRES Postgres
+		MYSQL    Mysql
 		JWT      Jwt
 		RABBITMQ RabbitMQ
 		SMTP     Smtp
