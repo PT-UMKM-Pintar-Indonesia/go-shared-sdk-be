@@ -75,8 +75,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.20.1
-	github.com/uptrace/bun v1.2.15
-	github.com/uptrace/bun/dialect/mysqldialect v1.2.15
+	github.com/uptrace/bun v1.2.11
+	github.com/uptrace/bun/dialect/mysqldialect v1.2.11
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
 	github.com/uptrace/bun/extra/bundebug v1.2.11
