@@ -3,11 +3,14 @@ package sdk_con
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
@@ -16,22 +19,49 @@ import (
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
-func SqlConnection(ctx context.Context, req sdk_dto.Request[sdk_dto.Environtment]) (*bun.DB, error) {
-	db := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(req.Config.POSTGRES.URL)))
+func SqlConnection(ctx context.Context, driver string, req sdk_dto.Request[sdk_dto.Environtment]) (*bun.DB, error) {
+	var bundb *bun.DB
 
-	if err := db.Ping(); err != nil {
-		logrus.Error(err)
-		return nil, err
+	if driver == sdk_cons.POSTGRES {
+		db := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(req.Config.POSTGRES.URL)))
+
+		if err := db.Ping(); err != nil {
+			logrus.Error(err)
+			return nil, err
+		}
+
+		if db != nil {
+			logrus.Info("Database connection success")
+
+			db.SetConnMaxIdleTime(time.Duration(time.Second * time.Duration(30)))
+			db.SetConnMaxLifetime(time.Duration(time.Second * time.Duration(30)))
+		}
+
+		bundb = bun.NewDB(db, pgdialect.New())
+
+	} else if driver == sdk_cons.MYSQL {
+		db, err := sql.Open(sdk_cons.MYSQL, req.Config.MYSQL.URL)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := db.Ping(); err != nil {
+			logrus.Error(err)
+			return nil, err
+		}
+
+		if db != nil {
+			logrus.Info("Database connection success")
+
+			db.SetConnMaxIdleTime(time.Duration(time.Second * time.Duration(30)))
+			db.SetConnMaxLifetime(time.Duration(time.Second * time.Duration(30)))
+		}
+
+		bundb = bun.NewDB(db, mysqldialect.New())
+
+	} else {
+		return nil, errors.New("Driver unsupported")
 	}
-
-	if db != nil {
-		logrus.Info("Database connection success")
-
-		db.SetConnMaxIdleTime(time.Duration(time.Second * time.Duration(30)))
-		db.SetConnMaxLifetime(time.Duration(time.Second * time.Duration(30)))
-	}
-
-	bundb := bun.NewDB(db, pgdialect.New())
 
 	if req.Config.APP.ENV != sdk_cons.PROD {
 		bundb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithEnabled(true), bundebug.WithVerbose(true), bundebug.FromEnv("BUNDEBUG")))

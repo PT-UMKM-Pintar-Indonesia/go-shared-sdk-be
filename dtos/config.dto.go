@@ -14,6 +14,13 @@ type Config struct {
 	PG_PASSWORD string `env:"PG_PASSWORD" mapstructure:"PG_PASSWORD"`
 	PG_DB       string `env:"PG_DB" mapstructure:"PG_DB"`
 
+	MYSQL_DSN      string `env:"MYSQL_DSN" mapstructure:"MYSQL_DSN"`
+	MYSQL_HOST     string `env:"MYSQL_HOST" mapstructure:"MYSQL_HOST"`
+	MYSQL_PORT     int    `env:"MYSQL_PORT" mapstructure:"MYSQL_PORT"`
+	MYSQL_USER     string `env:"MYSQL_USER" mapstructure:"MYSQL_USER"`
+	MYSQL_PASSWORD string `env:"MYSQL_PASSWORD" mapstructure:"MYSQL_PASSWORD"`
+	MYSQL_DB       string `env:"MYSQL_DB" mapstructure:"MYSQL_DB"`
+
 	REDIS_CSN      string `env:"REDIS_CSN" mapstructure:"REDIS_CSN"`
 	REDIS_HOST     string `env:"REDIS_HOST" mapstructure:"REDIS_HOST"`
 	REDIS_PORT     int    `env:"REDIS_PORT" mapstructure:"REDIS_PORT"`
@@ -43,6 +50,7 @@ type (
 		APP      sdk_opt.Application
 		REDIS    sdk_opt.Redis
 		POSTGRES sdk_opt.Postgres
+		MYSQL    sdk_opt.Mysql
 		JWT      sdk_opt.Jwt
 		RABBITMQ sdk_opt.RabbitMQ
 		SMTP     sdk_opt.Smtp

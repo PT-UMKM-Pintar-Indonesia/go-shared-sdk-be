@@ -25,6 +25,15 @@ type (
 		DB       string
 	}
 
+	Mysql struct {
+		URL      string
+		HOST     string
+		PORT     int
+		USER     string
+		PASSWORD string
+		DB       string
+	}
+
 	Jwt struct {
 		SECRET  string
 		EXPIRED int

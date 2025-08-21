@@ -35,4 +35,5 @@ const (
 
 const (
 	POSTGRES = "postgres"
+	MYSQL    = "mysql"
 )

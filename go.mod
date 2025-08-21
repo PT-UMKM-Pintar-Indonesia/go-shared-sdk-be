@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -51,7 +52,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mellium.im/sasl v0.3.2 // indirect
@@ -61,6 +63,7 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-oauth2/oauth2/v4 v4.5.3
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jonboulle/clockwork v0.5.0 // indirect
@@ -72,7 +75,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.20.1
-	github.com/uptrace/bun v1.2.11
+	github.com/uptrace/bun v1.2.15
+	github.com/uptrace/bun/dialect/mysqldialect v1.2.15
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
 	github.com/uptrace/bun/extra/bundebug v1.2.11
