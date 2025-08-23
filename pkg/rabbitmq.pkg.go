@@ -3,10 +3,12 @@ package pkg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/lithammer/shortuuid"
 	amqp "github.com/wagslane/go-rabbitmq"
 
@@ -99,6 +101,19 @@ func (p rabbitmq) Consumer(req sdk_dto.Request[sdk_dto.RabbitOptions], callback 
 		req.Option.Prefetch = 5
 	}
 
+	if req.Option.Args == nil {
+		req.Option.Args = amqp.Table{
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.Option.QueueName),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.Option.QueueName),
+		}
+	} else {
+		err := mergo.Merge(&req.Option.Args, amqp.Table{
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.Option.QueueName),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.Option.QueueName),
+		})
+		Logrus(sdk_cons.ERROR, err)
+	}
+
 	consumer, err := amqp.NewConsumer(p.rabbitmq, callback, req.Option.QueueName,
 		amqp.WithConsumerOptionsExchangeName(req.Option.ExchangeName),
 		amqp.WithConsumerOptionsExchangeKind(req.Option.ExchangeType),
@@ -142,7 +157,20 @@ func (p rabbitmq) listeningConsumerRPC(req sdk_dto.RabbitOptions) (*amqp.Consume
 	}
 
 	if req.Args == nil {
-		req.Args = amqp.Table{"x-max-length": 10000, "x-message-ttl": 3600000}
+		req.Args = amqp.Table{
+			"x-max-length":              1000000,
+			"x-message-ttl":             3600 * 1000,
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.ReplyTo),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.ReplyTo),
+		}
+	} else {
+		err := mergo.Merge(&req.Args, amqp.Table{
+			"x-max-length":              1000000,
+			"x-message-ttl":             3600 * 1000,
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.ReplyTo),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.ReplyTo),
+		})
+		Logrus(sdk_cons.ERROR, err)
 	}
 
 	consumer, err := amqp.NewConsumer(p.rabbitmq, func(d amqp.Delivery) (action amqp.Action) {
@@ -199,7 +227,7 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		req.Option.Timestamp = time.Now().Local()
 	}
 
-	res := make(chan []byte, 1000)
+	res := make(chan []byte, 1000000)
 	delivery.Store(req.Option.CorrelationID, res)
 
 	defer func() {
@@ -283,6 +311,21 @@ func (p rabbitmq) ConsumerRPC(req sdk_dto.Request[sdk_dto.RabbitOptions], handle
 
 	if req.Option.Prefetch < 1 {
 		req.Option.Prefetch = 5
+	}
+
+	if req.Option.Args == nil {
+		req.Option.Args = amqp.Table{
+			"x-max-length":              1000000,
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.Option.QueueName),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.Option.QueueName),
+		}
+	} else {
+		err := mergo.Merge(&req.Option.Args, amqp.Table{
+			"x-max-length":              1000000,
+			"x-dead-letter-exchange":    fmt.Sprintf("%s-dlx", req.Option.QueueName),
+			"x-dead-letter-routing-key": fmt.Sprintf("%s-dlq", req.Option.QueueName),
+		})
+		Logrus(sdk_cons.ERROR, err)
 	}
 
 	consumer, err := amqp.NewConsumer(p.rabbitmq, handler, req.Option.QueueName,
