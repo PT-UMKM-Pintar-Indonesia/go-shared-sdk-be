@@ -46,6 +46,7 @@ func (p rabbitmq) Publisher(req sdk_dto.Request[sdk_dto.RabbitOptions]) error {
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
+		amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)
@@ -219,6 +220,7 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
+		amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)
@@ -322,6 +324,7 @@ func (p rabbitmq) ReplyToDeliveryPublisher(req sdk_dto.Request[sdk_dto.RabbitOpt
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
+		amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)

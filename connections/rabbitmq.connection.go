@@ -17,7 +17,8 @@ func RabbitConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*rabbitmq.Conn
 		rabbitmq.WithConnectionOptionsReconnectInterval(interval),
 		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
 			Vhost:           req.Config.RABBITMQ.VSN,
-			FrameSize:       1073741824,
+			FrameSize:       2147483648,
+			ChannelMax:      16384,
 			Heartbeat:       interval,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}))
