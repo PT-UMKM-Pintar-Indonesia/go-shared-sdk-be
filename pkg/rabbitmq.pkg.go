@@ -313,20 +313,20 @@ func (p rabbitmq) ConsumerRPC(req sdk_dto.Request[sdk_dto.RabbitOptions], handle
 		req.Option.Prefetch = 5
 	}
 
-	if req.Option.Args == nil {
-		req.Option.Args = amqp.Table{
-			"x-max-length":              1000000,
-			"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
-			"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
-		}
-	} else {
-		err := mergo.Merge(&req.Option.Args, amqp.Table{
-			"x-max-length":              1000000,
-			"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
-			"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
-		})
-		Logrus(sdk_cons.ERROR, err)
-	}
+	// if req.Option.Args == nil {
+	// 	req.Option.Args = amqp.Table{
+	// 		"x-max-length":              1000000,
+	// 		"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
+	// 		"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
+	// 	}
+	// } else {
+	// 	err := mergo.Merge(&req.Option.Args, amqp.Table{
+	// 		"x-max-length":              1000000,
+	// 		"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
+	// 		"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
+	// 	})
+	// 	Logrus(sdk_cons.ERROR, err)
+	// }
 
 	consumer, err := amqp.NewConsumer(p.rabbitmq, handler, req.Option.QueueName,
 		amqp.WithConsumerOptionsExchangeName(req.Option.ExchangeName),
