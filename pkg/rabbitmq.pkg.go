@@ -48,7 +48,7 @@ func (p rabbitmq) Publisher(req sdk_dto.Request[sdk_dto.RabbitOptions]) error {
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
-		amqp.WithPublisherOptionsConfirm,
+		// amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)
@@ -63,14 +63,14 @@ func (p rabbitmq) Publisher(req sdk_dto.Request[sdk_dto.RabbitOptions]) error {
 		return err
 	}
 
-	publisher.NotifyPublish(func(r amqp.Confirmation) {
-		if !r.Confirmation.Ack {
-			Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.QueueName)
-			return
-		}
+	// publisher.NotifyPublish(func(r amqp.Confirmation) {
+	// 	if !r.Confirmation.Ack {
+	// 		Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.QueueName)
+	// 		return
+	// 	}
 
-		Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.QueueName)
-	})
+	// 	Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.QueueName)
+	// })
 
 	err = publisher.PublishWithContext(p.ctx, bodyByte, []string{req.Option.QueueName},
 		amqp.WithPublishOptionsPersistentDelivery,
@@ -101,18 +101,18 @@ func (p rabbitmq) Consumer(req sdk_dto.Request[sdk_dto.RabbitOptions], callback 
 		req.Option.Prefetch = 5
 	}
 
-	if req.Option.Args == nil {
-		req.Option.Args = amqp.Table{
-			"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
-			"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
-		}
-	} else {
-		err := mergo.Merge(&req.Option.Args, amqp.Table{
-			"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
-			"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
-		})
-		Logrus(sdk_cons.ERROR, err)
-	}
+	// if req.Option.Args == nil {
+	// 	req.Option.Args = amqp.Table{
+	// 		"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
+	// 		"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
+	// 	}
+	// } else {
+	// 	err := mergo.Merge(&req.Option.Args, amqp.Table{
+	// 		"x-dead-letter-exchange":    fmt.Sprintf("%s.dlx", req.Option.QueueName),
+	// 		"x-dead-letter-routing-key": fmt.Sprintf("%s.dlq", req.Option.QueueName),
+	// 	})
+	// 	Logrus(sdk_cons.ERROR, err)
+	// }
 
 	consumer, err := amqp.NewConsumer(p.rabbitmq, callback, req.Option.QueueName,
 		amqp.WithConsumerOptionsExchangeName(req.Option.ExchangeName),
@@ -248,7 +248,7 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
-		amqp.WithPublisherOptionsConfirm,
+		// amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)
@@ -264,13 +264,13 @@ func (p rabbitmq) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]by
 		return nil, err
 	}
 
-	publisher.NotifyPublish(func(r amqp.Confirmation) {
-		if !r.Confirmation.Ack {
-			Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.QueueName)
-			return
-		}
-		Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.QueueName)
-	})
+	// publisher.NotifyPublish(func(r amqp.Confirmation) {
+	// 	if !r.Confirmation.Ack {
+	// 		Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.QueueName)
+	// 		return
+	// 	}
+	// 	Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.QueueName)
+	// })
 
 	err = publisher.PublishWithContext(p.ctx, bodyByte, []string{req.Option.QueueName},
 		amqp.WithPublishOptionsPersistentDelivery,
@@ -367,7 +367,6 @@ func (p rabbitmq) ReplyToDeliveryPublisher(req sdk_dto.Request[sdk_dto.RabbitOpt
 		amqp.WithPublisherOptionsExchangeDeclare,
 		amqp.WithPublisherOptionsExchangeDurable,
 		amqp.WithPublisherOptionsExchangeNoWait,
-		amqp.WithPublisherOptionsConfirm,
 		amqp.WithPublisherOptionsExchangeArgs(req.Option.Args),
 		amqp.WithPublisherOptionsLogging,
 	)
@@ -376,14 +375,14 @@ func (p rabbitmq) ReplyToDeliveryPublisher(req sdk_dto.Request[sdk_dto.RabbitOpt
 		return err
 	}
 
-	publisher.NotifyPublish(func(r amqp.Confirmation) {
-		if !r.Confirmation.Ack {
-			Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.Delivery.ReplyTo)
-			return
-		}
+	// publisher.NotifyPublish(func(r amqp.Confirmation) {
+	// 	if !r.Confirmation.Ack {
+	// 		Logrus(sdk_cons.ERROR, "Failed message delivery to: %s", req.Option.Delivery.ReplyTo)
+	// 		return
+	// 	}
 
-		Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.Delivery.ReplyTo)
-	})
+	// 	Logrus(sdk_cons.INFO, "Success message delivery to: %s", req.Option.Delivery.ReplyTo)
+	// })
 
 	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Option.Body)
 	if err != nil {
