@@ -69,6 +69,16 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			PASSWORD: cfg.MYSQL_PASSWORD,
 			DB:       cfg.MYSQL_DB,
 		},
+		DBCONFIG: sdk_opt.DatabaseConfig{
+			TIMEOUT:       cfg.DB_TIMEOUT,
+			DIAL_TIMEOUT:  cfg.DB_DIAL_TIMEOUT,
+			READ_TIMEOUT:  cfg.DB_READ_TIMEOUT,
+			WRITE_TIMEOUT: cfg.DB_WRITE_TIMEOUT,
+			MAX_CONN:      cfg.DB_MAXCONN,
+			MAX_IDLE:      cfg.DB_MAXIDLE,
+			CON_MAX:       cfg.DB_CONMAX,
+			CON_IDLE:      cfg.DB_CONIDLE,
+		},
 		JWT: sdk_opt.Jwt{
 			SECRET:  cfg.JWT_SECRET_KEY,
 			EXPIRED: cfg.JWT_EXPIRED,

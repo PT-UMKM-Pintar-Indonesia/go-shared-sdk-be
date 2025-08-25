@@ -3,9 +3,9 @@ package sdk_dto
 import sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 
 type Config struct {
-	ENV          string `env:"GO_ENV" mapstructure:"GO_ENV" default:"development"`
-	PORT         string `env:"PORT" mapstructure:"PORT" default:"4000"`
-	INBOUND_SIZE int    `env:"INBOUND_SIZE" mapstructure:"INBOUND_SIZE" default:"3145728"`
+	ENV          string `env:"GO_ENV" mapstructure:"GO_ENV" default:"development" envDefault:"development"`
+	PORT         string `env:"PORT" mapstructure:"PORT" default:"4000" envDefault:"4000"`
+	INBOUND_SIZE int    `env:"INBOUND_SIZE" mapstructure:"INBOUND_SIZE" default:"3145728" envDefault:"3145728"`
 
 	PG_DSN      string `env:"PG_DSN" mapstructure:"PG_DSN"`
 	PG_HOST     string `env:"PG_HOST" mapstructure:"PG_HOST"`
@@ -20,6 +20,15 @@ type Config struct {
 	MYSQL_USER     string `env:"MYSQL_USER" mapstructure:"MYSQL_USER"`
 	MYSQL_PASSWORD string `env:"MYSQL_PASSWORD" mapstructure:"MYSQL_PASSWORD"`
 	MYSQL_DB       string `env:"MYSQL_DB" mapstructure:"MYSQL_DB"`
+
+	DB_TIMEOUT       int `env:"DB_TIMEOUT" mapstructure:"DB_TIMEOUT" default:"120" envDefault:"120"`
+	DB_DIAL_TIMEOUT  int `env:"DB_DIAL_TIMEOUT" mapstructure:"DB_DIAL_TIMEOUT" default:"120" envDefault:"120"`
+	DB_READ_TIMEOUT  int `env:"DB_READ_TIMEOUT" mapstructure:"DB_READ_TIMEOUT" default:"60" envDefault:"60"`
+	DB_WRITE_TIMEOUT int `env:"DB_WRITE_TIMEOUT" mapstructure:"DB_WRITE_TIMEOUT" default:"120" envDefault:"120"`
+	DB_MAXCONN       int `env:"DB_MAXCONN" mapstructure:"DB_MAXCONN" default:"1000" envDefault:"1000"`
+	DB_MAXIDLE       int `env:"DB_MAXIDLE" mapstructure:"DB_MAXIDLE" default:"900" envDefault:"900"`
+	DB_CONMAX        int `env:"DB_CONMAX" mapstructure:"DB_CONMAX" default:"30" envDefault:"30"`
+	DB_CONIDLE       int `env:"DB_CONIDLE" mapstructure:"DB_CONIDLE" default:"15" envDefault:"15"`
 
 	REDIS_CSN      string `env:"REDIS_CSN" mapstructure:"REDIS_CSN"`
 	REDIS_HOST     string `env:"REDIS_HOST" mapstructure:"REDIS_HOST"`
@@ -51,6 +60,7 @@ type (
 		REDIS    sdk_opt.Redis
 		POSTGRES sdk_opt.Postgres
 		MYSQL    sdk_opt.Mysql
+		DBCONFIG sdk_opt.DatabaseConfig
 		JWT      sdk_opt.Jwt
 		RABBITMQ sdk_opt.RabbitMQ
 		SMTP     sdk_opt.Smtp

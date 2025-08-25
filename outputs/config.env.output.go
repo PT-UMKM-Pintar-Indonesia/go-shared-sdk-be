@@ -34,6 +34,17 @@ type (
 		DB       string
 	}
 
+	DatabaseConfig struct {
+		TIMEOUT       int
+		DIAL_TIMEOUT  int
+		READ_TIMEOUT  int
+		WRITE_TIMEOUT int
+		MAX_CONN      int
+		MAX_IDLE      int
+		CON_MAX       int
+		CON_IDLE      int
+	}
+
 	Jwt struct {
 		SECRET  string
 		EXPIRED int
@@ -61,6 +72,7 @@ type (
 		REDIS    Redis
 		POSTGRES Postgres
 		MYSQL    Mysql
+		DBCONFIG DatabaseConfig
 		JWT      Jwt
 		RABBITMQ RabbitMQ
 		SMTP     Smtp
