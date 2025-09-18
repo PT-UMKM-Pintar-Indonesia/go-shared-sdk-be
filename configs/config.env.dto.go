@@ -28,7 +28,7 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 		}
 
 		if bind != nil {
-			if err := viper.Unmarshal(&bind); err != nil {
+			if err := viper.Unmarshal(bind); err != nil {
 				return sdk_opt.Environtment{}, err
 			}
 		}
@@ -39,7 +39,7 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 		}
 
 		if bind != nil {
-			if err := genv.Parse(&bind); err != nil {
+			if err := genv.Parse(bind); err != nil {
 				return sdk_opt.Environtment{}, err
 			}
 		}
