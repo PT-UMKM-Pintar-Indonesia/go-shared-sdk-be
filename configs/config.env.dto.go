@@ -37,6 +37,12 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 		if err := genv.Parse(&cfg); err != nil {
 			return sdk_opt.Environtment{}, err
 		}
+
+		if bind != nil {
+			if err := genv.Parse(&bind); err != nil {
+				return sdk_opt.Environtment{}, err
+			}
+		}
 	}
 
 	return sdk_opt.Environtment{
