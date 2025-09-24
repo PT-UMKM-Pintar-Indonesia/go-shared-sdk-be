@@ -31,6 +31,10 @@ const (
 
 	ACTIVE   = "active"
 	INACTIVE = "inactive"
+
+	HEX    = "hex"
+	BASE64 = "base64"
+	MD5    = "md5"
 )
 
 const (

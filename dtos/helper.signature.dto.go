@@ -8,6 +8,7 @@ type (
 		TimeStamp      string `json:"time_stamp"`
 		ClientKey      string `json:"client_key"`
 		Password       string `json:"password,omitempty"`
+		Encoding       string `json:"encoding,omitempty"`
 	}
 
 	Symetric struct {
@@ -17,6 +18,7 @@ type (
 		TimeStamp    string `json:"time_stamp,omitempty"`
 		ClientSecret string `json:"client_secret"`
 		Body         []byte `json:"body"`
+		Encoding     string `json:"encoding,omitempty"`
 	}
 
 	VerifyAsymmetric struct {
@@ -25,6 +27,7 @@ type (
 		Signature     string `json:"signature,omitempty"`
 		ClientId      string `json:"client_id,omitempty"`
 		Timestamp     string `json:"timestamp,omitempty"`
+		Encoding      string `json:"encoding,omitempty"`
 	}
 
 	VerifySymetric struct {
@@ -37,6 +40,7 @@ type (
 		TimeStamp     string `json:"time_stamp,omitempty"`
 		ClientSecret  string `json:"client_secret"`
 		Body          []byte `json:"body"`
+		Encoding      string `json:"encoding,omitempty"`
 	}
 
 	Sign struct {
