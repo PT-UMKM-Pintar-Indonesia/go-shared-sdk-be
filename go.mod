@@ -3,6 +3,7 @@ module github.com/PT-UMKM-Pintar-Indonesia/shared-sdk
 go 1.23.0
 
 require (
+	dario.cat/mergo v1.0.2
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/goccy/go-json v0.10.3
 	github.com/wagslane/go-rabbitmq v0.12.4
@@ -10,7 +11,6 @@ require (
 )
 
 require (
-	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect

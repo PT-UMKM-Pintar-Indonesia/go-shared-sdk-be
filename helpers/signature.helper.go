@@ -25,6 +25,30 @@ func NewSignature() sdk_inf.ISignature {
 	return signature{}
 }
 
+func (p signature) encoding(alg, enc string, body any) (string, error) {
+	switch alg {
+
+	case sdk_cons.HEX:
+		if enc == "encode" {
+			return hex.EncodeToString(body.([]byte)), nil
+		} else {
+			decode, err := hex.DecodeString(body.(string))
+			return string(decode), err
+		}
+
+	case sdk_cons.BASE64:
+		if enc == "encode" {
+			return base64.StdEncoding.EncodeToString(body.([]byte)), nil
+		} else {
+			decode, err := base64.StdEncoding.DecodeString(body.(string))
+			return string(decode), err
+		}
+
+	default:
+		return sdk_cons.EMPTY, errors.New("Encoding unsupported")
+	}
+}
+
 func (p signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.SignatureResponse) {
 	cert := NewCert()
 	salt := rand.Reader
@@ -82,19 +106,28 @@ func (p signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.Signa
 		return
 	}
 
-	res.Signature = base64.StdEncoding.EncodeToString(signature)
-	return
-}
-
-func (p signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
-	sha256 := cpt.SHA256.New()
-
-	if _, err := sha256.Write(req.Body); err != nil {
+	if res.Signature, err = p.encoding(req.Encoding, "encode", signature); err != nil {
 		res.Error = err
 		return
 	}
 
-	sha256SecretKey := strings.ToLower(hex.EncodeToString(sha256.Sum(nil)))
+	return
+}
+
+func (p signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
+	cipherBodyHash256 := cpt.SHA256.New()
+	if _, err := cipherBodyHash256.Write(req.Body); err != nil {
+		res.Error = err
+		return
+	}
+
+	cipherBodyHash := cipherBodyHash256.Sum(nil)
+	sha256SecretKey, err := p.encoding(req.Encoding, "encode", cipherBodyHash)
+	if err != nil {
+		res.Error = err
+		return
+	}
+	sha256SecretKey = strings.ToLower(sha256SecretKey)
 
 	hmac512Body := req.Method + ":" + req.Url + ":" + req.AccessToken + ":" + sha256SecretKey + ":" + req.TimeStamp
 	hmac512 := hmac.New(cpt.SHA512.New, []byte(req.ClientSecret))
@@ -104,7 +137,13 @@ func (p signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.Signatur
 		return
 	}
 
-	res.Signature = base64.StdEncoding.EncodeToString(hmac512.Sum(nil))
+	signature, err := p.encoding(req.Encoding, "encode", hmac512.Sum(nil))
+	if err != nil {
+		res.Error = err
+		return
+	}
+	res.Signature = signature
+
 	return
 }
 
@@ -146,13 +185,13 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 		return
 	}
 
-	decodeSignature, err := base64.StdEncoding.DecodeString(req.Signature)
+	decodeSignature, err := p.encoding(req.Encoding, "decode", req.Signature)
 	if err != nil {
-		res.Error = errors.New("Invalid to decoded signature")
+		res.Error = err
 		return
 	}
 
-	err = rsa.VerifyPKCS1v15(publicKeyRawToKeyRes.KeyPublic, cpt.SHA256, cipherBodyHash, decodeSignature)
+	err = rsa.VerifyPKCS1v15(publicKeyRawToKeyRes.KeyPublic, cpt.SHA256, cipherBodyHash, []byte(decodeSignature))
 	if err != nil {
 		res.Error = errors.New("Unverified signature unmatch PEM PublicKey certificate unsupported")
 		return
@@ -164,14 +203,18 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 
 func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
 	cipherBodyHash256 := sha256.New()
-
 	if _, err := cipherBodyHash256.Write(req.Body); err != nil {
 		res.Error = err
 		return
 	}
 
 	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	sha256SecretKey := strings.ToLower(hex.EncodeToString(cipherBodyHash))
+	sha256SecretKey, err := p.encoding(req.Encoding, "encode", cipherBodyHash)
+	if err != nil {
+		res.Error = err
+		return
+	}
+	sha256SecretKey = strings.ToLower(sha256SecretKey)
 
 	hmac512Body := req.Method + ":" + req.Url + ":" + req.AccessToken + ":" + sha256SecretKey + ":" + req.TimeStamp
 	hmac512 := hmac.New(cpt.SHA512.New, []byte(req.ClientSecret))
@@ -181,7 +224,11 @@ func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.Sign
 		return
 	}
 
-	res.Signature = base64.StdEncoding.EncodeToString(hmac512.Sum(nil))
+	res.Signature, err = p.encoding(req.Encoding, "encode", hmac512.Sum(nil))
+	if err != nil {
+		res.Error = err
+		return
+	}
 
 	if ok := reflect.DeepEqual(req.Signature, res.Signature); !ok {
 		res.Error = fmt.Errorf("Unmatch signature request: %s between internal signature: %s", req.Signature, res.Signature)
