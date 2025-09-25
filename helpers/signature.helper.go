@@ -122,7 +122,7 @@ func (p signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.Signatur
 	}
 
 	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	sha256SecretKey, err := p.encoding(req.Encoding, "encode", cipherBodyHash)
+	sha256SecretKey, err := p.encoding(sdk_cons.HEX, "encode", cipherBodyHash)
 	if err != nil {
 		res.Error = err
 		return
@@ -209,7 +209,7 @@ func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.Sign
 	}
 
 	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	sha256SecretKey, err := p.encoding(req.Encoding, "encode", cipherBodyHash)
+	sha256SecretKey, err := p.encoding(sdk_cons.HEX, "encode", cipherBodyHash)
 	if err != nil {
 		res.Error = err
 		return
