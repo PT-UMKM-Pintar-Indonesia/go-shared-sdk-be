@@ -9,20 +9,19 @@ import (
 )
 
 func RedisConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*redis.Client, error) {
-	parseURL, err := redis.ParseURL(req.Config.REDIS.URL)
+	options, err := redis.ParseURL(req.Config.REDIS.URL)
 	if err != nil {
 		return nil, err
 	}
 
-	return redis.NewClient(&redis.Options{
-		Addr:            parseURL.Addr,
-		MaxRetries:      10,
-		PoolSize:        20,
-		PoolFIFO:        true,
-		ReadTimeout:     time.Duration(time.Second * 30),
-		WriteTimeout:    time.Duration(time.Second * 30),
-		DialTimeout:     time.Duration(time.Second * 60),
-		MinRetryBackoff: time.Duration(time.Second * 60),
-		MaxRetryBackoff: time.Duration(time.Second * 120),
-	}), nil
+	options.MaxRetries = 10
+	options.PoolSize = 20
+	options.PoolFIFO = true
+	options.ReadTimeout = time.Duration(time.Second * 30)
+	options.WriteTimeout = time.Duration(time.Second * 30)
+	options.DialTimeout = time.Duration(time.Second * 60)
+	options.MinRetryBackoff = time.Duration(time.Second * 60)
+	options.MaxRetryBackoff = time.Duration(time.Second * 120)
+
+	return redis.NewClient(options), nil
 }
