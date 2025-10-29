@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -63,14 +64,18 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	if options.Body == nil {
 		options.Body = bytes.NewReader(nil)
 	} else {
-		body, err := parser.Marshal(options.Body)
-		if err != nil {
-			res.StatCode = http.StatusBadRequest
-			res.ErrMsg = err.Error()
+		if strings.Contains(options.Headers["Content-Type"], "json") {
+			body, err := parser.Marshal(options.Body)
+			if err != nil {
+				res.StatCode = http.StatusBadRequest
+				res.ErrMsg = err.Error()
 
-			return
+				return
+			}
+			options.Body = bytes.NewReader(body)
+		} else {
+			options.Body = bytes.NewReader([]byte(options.Body.(string)))
 		}
-		options.Body = bytes.NewReader(body)
 	}
 
 	req, err := http.NewRequestWithContext(options.Ctx, options.Method, options.Url, options.Body.(io.Reader))
