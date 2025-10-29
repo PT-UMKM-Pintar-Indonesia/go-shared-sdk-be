@@ -11,12 +11,13 @@ import (
 
 type (
 	ServiceOptions struct {
-		CTX  context.Context
-		ENV  Request[Environtment]
-		ENVB any
-		DB   *bun.DB
-		RDS  *redis.Client
-		AMQP *rabbitmq.Conn
+		CTX    context.Context
+		ENV    Request[Environtment]
+		ENVB   any
+		DB     *bun.DB
+		RDS    *redis.Client
+		AMQP   *rabbitmq.Conn
+		HELPER any
 	}
 
 	UsecaseOptions[T any] struct {
@@ -114,5 +115,34 @@ type (
 		CC         []string       `json:"cc,omitempty"`
 		BCC        []string       `json:"bcc,omitempty"`
 		Vars       map[string]any `json:"vars,omitempty"`
+	}
+)
+
+type (
+	Shipper struct {
+		Name         string `json:"name"`
+		Address      string `json:"address"`
+		Latitude     string `json:"latitude,omitempty"`
+		Longitude    string `json:"longitude,omitempty"`
+		MobileNumber string `json:"mobile_number,omitempty"`
+		Poi          string `json:"poi,omitempty"`
+	}
+
+	Receiver struct {
+		Name         string `json:"name"`
+		Address      string `json:"address"`
+		Latitude     string `json:"latitude,omitempty"`
+		Longitude    string `json:"longitude,omitempty"`
+		MobileNumber string `json:"mobile_number,omitempty"`
+		Poi          string `json:"poi,omitempty"`
+		ItemType     string `json:"item_type"`
+		ItemNote     string `json:"item_note,omitempty"`
+	}
+
+	ShippingOptions struct {
+		Shipper        Shipper        `json:"shipper"`
+		Receiver       Receiver       `json:"receiver"`
+		RequestID      string         `json:"request_id"`
+		AdditionalInfo map[string]any `json:"additional_info,omitempty"`
 	}
 )
