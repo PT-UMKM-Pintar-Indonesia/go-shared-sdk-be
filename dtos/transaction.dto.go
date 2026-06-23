@@ -62,5 +62,6 @@ type (
 		WebhookUrl        string `json:"webhook_url,omitempty"`
 		AdditionalInfo    any    `json:"additional_info,omitempty"`
 		VaNumber          string `json:"va_number,omitempty"`
+		TransactionType   string `json:"transaction_type,omitempty"`
 	}
 )
