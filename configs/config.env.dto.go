@@ -1,18 +1,27 @@
 package sdk_config
 
 import (
+	"fmt"
 	"os"
 
-	genv "github.com/caarlos0/env"
+	"github.com/caarlos0/env"
 	"github.com/spf13/viper"
 
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, error) {
-	cfg := sdk_dto.Config{}
+func NewEnvirontment(name, path, ext string, bind any) (*sdk_opt.Environtment, error) {
+	cfg := &sdk_dto.Config{}
 
+	if err := loadConfig(name, path, ext, cfg, bind); err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	return mapToOutput(cfg, bind), nil
+}
+
+func loadConfig(name, path, ext string, cfg, bind any) error {
 	if _, ok := os.LookupEnv("GO_ENV"); !ok {
 		viper.SetConfigName(name)
 		viper.SetConfigType(ext)
@@ -20,32 +29,31 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 		viper.AutomaticEnv()
 
 		if err := viper.ReadInConfig(); err != nil {
-			return sdk_opt.Environtment{}, err
+			return err
 		}
 
-		if err := viper.Unmarshal(&cfg); err != nil {
-			return sdk_opt.Environtment{}, err
+		if err := viper.Unmarshal(cfg); err != nil {
+			return err
 		}
 
 		if bind != nil {
-			if err := viper.Unmarshal(bind); err != nil {
-				return sdk_opt.Environtment{}, err
-			}
+			return viper.Unmarshal(bind)
 		}
-
 	} else {
-		if err := genv.Parse(&cfg); err != nil {
-			return sdk_opt.Environtment{}, err
+		if err := env.Parse(cfg); err != nil {
+			return err
 		}
 
 		if bind != nil {
-			if err := genv.Parse(bind); err != nil {
-				return sdk_opt.Environtment{}, err
-			}
+			return env.Parse(bind)
 		}
 	}
 
-	return sdk_opt.Environtment{
+	return nil
+}
+
+func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
+	return &sdk_opt.Environtment{
 		APP: sdk_opt.Application{
 			ENV:          cfg.ENV,
 			PORT:         cfg.PORT,
@@ -90,13 +98,15 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			EXPIRED: cfg.JWT_EXPIRED,
 		},
 		RABBITMQ: sdk_opt.RabbitMQ{
-			URL:      cfg.RABBITMQ_QSN,
-			VSN:      cfg.RABBITMQ_VSN,
-			HOST:     cfg.RABBITMQ_HOST,
-			PORT:     cfg.RABBITMQ_PORT,
-			USER:     cfg.RABBITMQ_USER,
-			PASSWORD: cfg.RABBITMQ_PASSWORD,
-			SECRET:   cfg.RABBITMQ_SECRET_KEY,
+			URL:         cfg.RABBITMQ_QSN,
+			VSN:         cfg.RABBITMQ_VSN,
+			HOST:        cfg.RABBITMQ_HOST,
+			PORT:        cfg.RABBITMQ_PORT,
+			USER:        cfg.RABBITMQ_USER,
+			PASSWORD:    cfg.RABBITMQ_PASSWORD,
+			SECRET:      cfg.RABBITMQ_SECRET_KEY,
+			CONCURRENCY: cfg.RABBITMQ_CONCURRENCY,
+			QOS:         cfg.RABBITMQ_QOS,
 		},
 		SMTP: sdk_opt.Smtp{
 			HOST:     cfg.SMTP_HOST,
@@ -105,5 +115,5 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			PASSWORD: cfg.SMTP_PASSWORD,
 		},
 		BIND: bind,
-	}, nil
+	}
 }

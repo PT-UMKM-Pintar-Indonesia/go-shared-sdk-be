@@ -1,4 +1,4 @@
-package sdk_opt
+package sdk_dro
 
 import "github.com/lestrrat-go/jwx/v3/jwk"
 

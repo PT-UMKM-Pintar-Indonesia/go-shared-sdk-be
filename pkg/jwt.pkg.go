@@ -1,4 +1,4 @@
-package pkg
+package sdk_pkg
 
 import (
 	"context"
@@ -9,103 +9,86 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"sync"
 	"time"
-
-	goredis "github.com/redis/go-redis/v9"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 type jsonWebToken struct {
-	env       sdk_dto.Environtment
+	ctx       context.Context
+	env       *sdk_dto.Environment
 	rds       sdk_inf.IRedis
 	jose      sdk_inf.IJose
 	cipher    sdk_inf.ICrypto
 	cert      sdk_inf.ICert
 	parser    sdk_inf.IParser
 	transform sdk_inf.ITransform
+	mu        sync.RWMutex
 }
 
-func NewJsonWebToken(ctx context.Context, env sdk_dto.Environtment, con *goredis.Client) sdk_inf.IJsonWebToken {
-	jose := NewJose(ctx)
-
-	rds, err := NewRedis(ctx, con)
-	if err != nil {
-		Logrus(sdk_cons.FATAL, err)
-	}
-
-	cipher := sdk_helper.NewCrypto()
-	cert := sdk_helper.NewCert()
-	parser := sdk_helper.NewParser()
-	transform := sdk_helper.NewTransform()
-
-	return jsonWebToken{
+func NewJsonWebToken(ctx context.Context, env *sdk_dto.Environment, rds sdk_inf.IRedis) sdk_inf.IJsonWebToken {
+	return &jsonWebToken{
+		ctx:       ctx,
 		env:       env,
 		rds:       rds,
-		jose:      jose,
-		cipher:    cipher,
-		cert:      cert,
-		parser:    parser,
-		transform: transform,
+		jose:      NewJose(ctx),
+		cipher:    sdk_helper.NewCrypto(),
+		cert:      sdk_helper.NewCert(),
+		parser:    sdk_helper.NewParser(),
+		transform: sdk_helper.NewTransform(),
 	}
 }
 
-func (p jsonWebToken) createSecret(prefix string, body []byte) (*sdk_opt.SecretMetadata, error) {
-	secretMetadataReq := new(sdk_dto.SecretMetadata)
-	secretMetadataRes := new(sdk_opt.SecretMetadata)
+func (p *jsonWebToken) IsRedisAvailable() bool {
+	return p.rds != nil
+}
 
+func (p *jsonWebToken) createSecret(prefix string, body []byte) (*sdk_dro.SecretMetadata, error) {
 	timeNow := time.Now().Format(time.UnixDate)
 	cipherTextRandom := fmt.Sprintf("%s:%s:%s:%d", prefix, string(body), timeNow, p.env.JWT.EXPIRED)
 	cipherTextData := hex.EncodeToString([]byte(cipherTextRandom))
 
 	cipherSecretKey, err := p.cipher.SHA512Sign(cipherTextData)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sha512 sign failed: %w", err)
 	}
 
 	cipherText, err := p.cipher.SHA512Sign(timeNow)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sha512 sign time failed: %w", err)
 	}
 
 	cipherKey, err := p.cipher.AES256Encrypt(cipherSecretKey, cipherText)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aes encrypt failed: %w", err)
 	}
 
-	generatePrivateKey := sdk_dto.GeneratePrivateKey{}
-	generatePrivateKey.Password = cipherKey
-
-	privateKey := p.cert.GenerateKey(generatePrivateKey)
+	privateKey := p.cert.GenerateKey(sdk_dto.GeneratePrivateKey{
+		Password:       cipherKey,
+		KeySize:        sdk_cons.KEY_SIZE_4096,
+		PrivateKeyType: sdk_cons.PRIVPKCS8,
+		PublicKeyType:  sdk_cons.PUBPKCS8,
+	})
 	if privateKey.Error != nil {
-		return nil, err
+		return nil, privateKey.Error
 	}
 
-	secretMetadataReq.PrivKeyRaw = string(privateKey.KeyRawPrivate)
-	secretMetadataReq.CipherKey = cipherKey
-
-	if err := p.transform.SrcToDest(secretMetadataReq, secretMetadataRes); err != nil {
-		return nil, err
-	}
-
-	return secretMetadataRes, nil
+	return &sdk_dro.SecretMetadata{
+		PrivKeyRaw: string(privateKey.KeyRawPrivate),
+		CipherKey:  cipherKey,
+	}, nil
 }
 
-func (p jsonWebToken) createSignature(prefix string, body any) (*sdk_opt.SignatureMetadata, error) {
-	var (
-		signatureMetadataReq *sdk_dto.SignatureMetadata = new(sdk_dto.SignatureMetadata)
-		signatureMetadataRes *sdk_opt.SignatureMetadata = new(sdk_opt.SignatureMetadata)
-		signatureKey         string                     = fmt.Sprintf("CREDENTIAL:%s", prefix)
-		signatureField       string                     = "signature_metadata"
-	)
-
+func (p *jsonWebToken) createSignature(prefix string, body any) (*sdk_dro.SignatureMetadata, error) {
 	bodyByte, err := p.parser.Marshal(body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parser marshal failed: %w", err)
 	}
 
 	secretKey, err := p.createSecret(prefix, bodyByte)
@@ -113,13 +96,12 @@ func (p jsonWebToken) createSignature(prefix string, body any) (*sdk_opt.Signatu
 		return nil, err
 	}
 
-	privateKeyRawToKey := sdk_dto.PrivateKeyRawToKey{}
-	privateKeyRawToKey.KeyRawPrivate = []byte(secretKey.PrivKeyRaw)
-	privateKeyRawToKey.Password = secretKey.CipherKey
-
-	rsaPrivateKey := p.cert.PrivateKeyRawToKey(privateKeyRawToKey)
+	rsaPrivateKey := p.cert.PrivateKeyRawToKey(sdk_dto.PrivateKeyRawToKey{
+		KeyRawPrivate: []byte(secretKey.PrivKeyRaw),
+		Password:      secretKey.CipherKey,
+	})
 	if rsaPrivateKey.Error != nil {
-		return nil, err
+		return nil, rsaPrivateKey.Error
 	}
 
 	cipherHash512 := sha512.New()
@@ -128,112 +110,122 @@ func (p jsonWebToken) createSignature(prefix string, body any) (*sdk_opt.Signatu
 
 	signature, err := rsa.SignPKCS1v15(rand.Reader, rsaPrivateKey.KeyPrivate, crypto.SHA512, cipherHash512Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rsa sign failed: %w", err)
 	}
 
 	if err := rsa.VerifyPKCS1v15(rsaPrivateKey.KeyPublic, crypto.SHA512, cipherHash512Body, signature); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rsa verify failed: %w", err)
 	}
 
 	signatureOutput := hex.EncodeToString(signature)
-
 	_, jweKey, err := p.jose.JweEncrypt(rsaPrivateKey.KeyPublic, signatureOutput)
 	if err != nil {
 		return nil, err
 	}
 
-	signatureMetadataReq.PrivKeyRaw = secretKey.PrivKeyRaw
-	signatureMetadataReq.SigKey = signatureOutput
-	signatureMetadataReq.CipherKey = secretKey.CipherKey
-	signatureMetadataReq.JweKey = *jweKey
-	signatureMetadataReq.PrivKey = rsaPrivateKey.KeyPrivate
-
-	signatureMetadataByte, err := p.parser.Marshal(signatureMetadataReq)
-	if err != nil {
-		return nil, err
+	signatureMetadata := &sdk_dro.SignatureMetadata{
+		PrivKeyRaw: secretKey.PrivKeyRaw,
+		SigKey:     signatureOutput,
+		CipherKey:  secretKey.CipherKey,
+		JweKey:     *jweKey,
+		PrivKey:    rsaPrivateKey.KeyPrivate,
 	}
 
-	jwtClaim := string(signatureMetadataByte)
-	jwtExpired := time.Duration(time.Minute * time.Duration(p.env.JWT.EXPIRED))
+	if p.rds != nil {
+		jwtMetadataByte, err := p.parser.Marshal(signatureMetadata)
+		if err != nil {
+			return nil, fmt.Errorf("parser marshal failed: %w", err)
+		}
 
-	if err := p.rds.HSetEx(signatureKey, jwtExpired, signatureField, jwtClaim); err != nil {
-		return nil, err
+		jwtExpired := time.Duration(time.Minute * time.Duration(p.env.JWT.EXPIRED))
+		if err := p.rds.HSetEx(p.ctx, fmt.Sprintf("jwt:cert:%s", prefix), jwtExpired, "signature_metadata", jwtMetadataByte); err != nil {
+			return nil, fmt.Errorf("redis hsetex failed: %w", err)
+		}
 	}
 
-	if err := p.transform.SrcToDest(signatureMetadataReq, signatureMetadataRes); err != nil {
-		return nil, err
-	}
-
-	return signatureMetadataRes, nil
+	return signatureMetadata, nil
 }
 
-func (p jsonWebToken) Sign(prefix string, body any) (*sdk_opt.SignMetadata, error) {
-	tokenKey := fmt.Sprintf("TOKEN:%s", prefix)
-	signMetadataRes := new(sdk_opt.SignMetadata)
+func (p *jsonWebToken) Sign(prefix string, body any) (*sdk_dro.SignMetadata, error) {
+	tokenKey := fmt.Sprintf("jwt:token:%s", prefix)
 
-	tokenExist, err := p.rds.Exists(tokenKey)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.rds != nil {
+		tokenExist, err := p.rds.Exists(p.ctx, tokenKey)
+		if err != nil {
+			return nil, fmt.Errorf("redis exists failed: %w", err)
+		}
+
+		if tokenExist > 0 {
+			tokenData, err := p.rds.Get(p.ctx, tokenKey)
+			if err != nil {
+				return nil, fmt.Errorf("redis get failed: %w", err)
+			}
+			return &sdk_dro.SignMetadata{Token: string(tokenData), Expired: p.env.JWT.EXPIRED}, nil
+		}
+	}
+
+	signature, err := p.createSignature(prefix, body)
 	if err != nil {
 		return nil, err
 	}
 
-	if tokenExist < 1 {
-		signature, err := p.createSignature(prefix, body)
-		if err != nil {
-			return nil, err
-		}
-
-		timestamp := time.Now().Format(sdk_cons.DATE_TIME_FORMAT)
-		aud := signature.SigKey[10:20]
-		iss := signature.SigKey[30:40]
-		sub := signature.SigKey[50:60]
-		suffix := int(math.Pow(float64(p.env.JWT.EXPIRED), float64(len(aud)+len(iss)+len(sub))))
-
-		secretKey := fmt.Sprintf("%s:%s:%s:%s:%d", aud, iss, sub, timestamp, suffix)
-		secretData := hex.EncodeToString([]byte(secretKey))
-
-		jti, err := p.cipher.AES256Encrypt(secretData, prefix)
-		if err != nil {
-			return nil, err
-		}
-
-		duration := time.Duration(time.Minute * time.Duration(p.env.JWT.EXPIRED))
-		jwtIat := time.Now().UTC().Add(-duration)
-		jwtExp := time.Now().Add(duration)
-
-		tokenPayload := new(sdk_dto.JwtSignOption)
-		tokenPayload.SecretKey = signature.CipherKey
-		tokenPayload.Kid = signature.JweKey.CipherText
-		tokenPayload.PrivateKey = signature.PrivKey
-		tokenPayload.Aud = []string{aud}
-		tokenPayload.Iss = iss
-		tokenPayload.Sub = sub
-		tokenPayload.Jti = jti
-		tokenPayload.Iat = jwtIat
-		tokenPayload.Exp = jwtExp
-		tokenPayload.Claim = timestamp
-
-		tokenData, err := p.jose.JwtSign(tokenPayload)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := p.rds.SetEx(tokenKey, duration, string(tokenData)); err != nil {
-			return nil, err
-		}
-
-		signMetadataRes.Token = string(tokenData)
-		signMetadataRes.Expired = p.env.JWT.EXPIRED
-
-		return signMetadataRes, nil
-	} else {
-		tokenData, err := p.rds.Get(tokenKey)
-		if err != nil {
-			return nil, err
-		}
-
-		signMetadataRes.Token = string(tokenData)
-		signMetadataRes.Expired = p.env.JWT.EXPIRED
-
-		return signMetadataRes, nil
+	if len(signature.SigKey) < 60 {
+		return nil, fmt.Errorf("invalid signature key length: expected >= 60, got %d", len(signature.SigKey))
 	}
+
+	timestamp := time.Now().Format(sdk_cons.DATE_TIME_FORMAT)
+	aud := signature.SigKey[10:20]
+	iss := signature.SigKey[30:40]
+	sub := signature.SigKey[50:60]
+	suffix := int(math.Pow(float64(p.env.JWT.EXPIRED), float64(len(aud)+len(iss)+len(sub))))
+
+	secretKey := fmt.Sprintf("%s:%s:%s:%s:%d", aud, iss, sub, timestamp, suffix)
+	secretData := hex.EncodeToString([]byte(secretKey))
+
+	jti, err := p.cipher.AES256Encrypt(secretData, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("aes encrypt failed: %w", err)
+	}
+
+	duration := time.Duration(time.Minute * time.Duration(p.env.JWT.EXPIRED))
+
+	tokenData, err := p.jose.JwtSign(&sdk_dto.JwtSignOption{
+		SecretKey:  signature.CipherKey,
+		Kid:        signature.JweKey.CipherText,
+		PrivateKey: signature.PrivKey,
+		Aud:        []string{aud},
+		Iss:        iss,
+		Sub:        sub,
+		Jti:        jti,
+		Iat:        time.Now().UTC().Add(-duration),
+		Exp:        time.Now().Add(duration),
+		Claim:      timestamp,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("jwt sign failed: %w", err)
+	}
+
+	if p.rds != nil {
+		if err := p.rds.SetEx(p.ctx, tokenKey, duration, string(tokenData)); err != nil {
+			return nil, fmt.Errorf("redis setex token failed: %w", err)
+		}
+
+		bodyMarshal, err := p.parser.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("redis setex body failed: %w", err)
+		}
+
+		if err := p.rds.SetEx(p.ctx, fmt.Sprintf("jwt:body:%s", prefix), duration, string(bodyMarshal)); err != nil {
+			return nil, fmt.Errorf("redis setex body failed: %w", err)
+		}
+	}
+
+	return &sdk_dro.SignMetadata{Token: string(tokenData), Expired: p.env.JWT.EXPIRED}, nil
+}
+
+func (p *jsonWebToken) Verify(prefix string, token string) (jwt.Token, error) {
+	return p.jose.JwtVerify(prefix, token, p.rds)
 }
