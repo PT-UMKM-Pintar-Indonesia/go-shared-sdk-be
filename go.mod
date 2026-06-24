@@ -6,7 +6,7 @@ require (
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/wagslane/go-rabbitmq v0.12.4
-	golang.org/x/crypto v0.38.0
+	golang.org/x/crypto v0.49.0
 )
 
 require (
@@ -35,6 +35,7 @@ require (
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/btree v0.0.0-20191029221954-400434d76274 // indirect
 	github.com/tidwall/buntdb v1.1.2 // indirect
@@ -51,9 +52,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
@@ -70,7 +71,7 @@ require (
 	github.com/lestrrat-go/jwx/v3 v3.0.2
 	github.com/lib/pq v1.10.9
 	github.com/lithammer/shortuuid v3.0.0+incompatible
-	github.com/mattn/go-sqlite3 v1.14.47
+	github.com/mattn/go-sqlite3 v1.14.42
 	github.com/redis/go-redis/v9 v9.9.0
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3
