@@ -2,136 +2,168 @@ package sdk_helper
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log/slog"
+	"net"
 	"net/http"
-	"net/url"
+	"net/http/httputil"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/sirupsen/logrus"
+
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-type RequestLogFunc func(req *http.Request, body []byte)
-
-type ResponseLogFunc func(res *http.Response, body []byte)
-
-type HttpClientOptions struct {
-	MaxRetry            int
-	RetryWaitMin        time.Duration
-	RetryWaitMax        time.Duration
-	MaxResponseBodySize int64
-	Logger              *slog.Logger
-	OnRequestLog        RequestLogFunc
-	OnResponseLog       ResponseLogFunc
+type httpClient struct {
+	standart *http.Client
 }
 
-type RequestOptions struct {
-	Method  string
-	URL     string
-	Body    any
-	Headers map[string]string
-}
+func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
+	client := retryablehttp.NewClient()
 
-type HttpClient struct {
-	client *retryablehttp.Client
-	opt    HttpClientOptions
-}
+	parser := NewParser()
+	standart := client.StandardClient()
 
-func NewHttpClient(opt HttpClientOptions) *HttpClient {
-	if opt.MaxResponseBodySize == 0 {
-		opt.MaxResponseBodySize = 10 * 1024 * 1024
-	}
-	if opt.Logger == nil {
-		opt.Logger = slog.Default()
+	if options.Transport != nil {
+		client.HTTPClient.Transport = options.Transport
 	}
 
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = opt.MaxRetry
-	retryClient.RetryWaitMin = opt.RetryWaitMin
-	retryClient.RetryWaitMax = opt.RetryWaitMax
-	retryClient.Logger = nil
+	httpClient := httpClient{standart: standart}
+	httpRes := new(http.Response)
+	httpErr := error(nil)
 
-	return &HttpClient{
-		client: retryClient,
-		opt:    opt,
-	}
-}
+	client.RetryWaitMin = 3 * time.Second
+	client.RetryWaitMax = 5 * time.Second
+	client.RetryMax = 5
+	client.Backoff = retryablehttp.DefaultBackoff
 
-func (c *HttpClient) Do(ctx context.Context, reqOpt RequestOptions) ([]byte, error) {
-	bodyReader, contentType, err := c.buildRequestBody(reqOpt.Body)
-	if err != nil {
-		return nil, err
-	}
+	httpClient.httpClientConfig(client, options.Configs)
 
-	var bodyBytes []byte
-	if bodyReader != nil {
-		if br, ok := bodyReader.(*bytes.Reader); ok {
-			bodyBytes = make([]byte, br.Len())
-			currPos, _ := br.Seek(0, io.SeekCurrent)
-			_, _ = br.ReadAt(bodyBytes, 0)
-			_, _ = br.Seek(currPos, io.SeekStart)
-		}
-	}
-
-	req, err := retryablehttp.NewRequestWithContext(ctx, reqOpt.Method, reqOpt.URL, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
-	for k, v := range reqOpt.Headers {
-		req.Header.Set(k, v)
-	}
-
-	if c.opt.OnRequestLog != nil {
-		c.opt.OnRequestLog(req.Request, bodyBytes)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	limitReader := io.LimitReader(resp.Body, c.opt.MaxResponseBodySize)
-	resBody, err := io.ReadAll(limitReader)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.opt.OnResponseLog != nil {
-		c.opt.OnResponseLog(resp, resBody)
-	}
-
-	if resp.StatusCode >= 400 {
-		return resBody, fmt.Errorf("http_error_%d", resp.StatusCode)
-	}
-
-	return resBody, nil
-}
-
-func (c *HttpClient) buildRequestBody(data any) (io.Reader, string, error) {
-	if data == nil {
-		return nil, "", nil
-	}
-
-	switch v := data.(type) {
-	case []byte:
-		return bytes.NewReader(v), "application/octet-stream", nil
-	case string:
-		return bytes.NewReader([]byte(v)), "text/plain", nil
-	case url.Values:
-		return bytes.NewReader([]byte(v.Encode())), "application/x-www-form-urlencoded", nil
-	default:
-		jsonData, err := json.Marshal(v)
+	client.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, i int) {
+		lgr, err := httputil.DumpRequestOut(r, true)
 		if err != nil {
-			return nil, "", err
+			logrus.Error(err)
+			return
 		}
-		return bytes.NewReader(jsonData), "application/json", nil
+		logrus.Info(fmt.Sprintf("\nHTTP REQUEST: \n%s", string(lgr)))
 	}
+
+	client.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
+		lgr, err := httputil.DumpResponse(r, true)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		logrus.Info(fmt.Sprintf("\nHTTP RESPONSE: \n%s", string(lgr)))
+	}
+
+	if options.Body == nil {
+		options.Body = bytes.NewReader(nil)
+	} else {
+		if strings.Contains(options.Headers["Content-Type"], "json") {
+			body, err := parser.Marshal(options.Body)
+			if err != nil {
+				res.StatCode = http.StatusBadRequest
+				res.ErrMsg = err.Error()
+
+				return
+			}
+			options.Body = bytes.NewReader(body)
+		} else {
+			options.Body = bytes.NewReader([]byte(options.Body.(string)))
+		}
+	}
+
+	req, err := http.NewRequestWithContext(options.Ctx, options.Method, options.Url, options.Body.(io.Reader))
+	if res = httpClient.httpClientError(err); res.StatCode >= http.StatusBadRequest {
+		return
+	}
+
+	if options.Headers != nil {
+		for key, value := range options.Headers {
+			req.Header.Set(key, value)
+		}
+	}
+
+	if options.Transport != nil {
+		options.Transport.RoundTrip(req)
+	}
+
+	httpRes, httpErr = standart.Do(req)
+	if res = httpClient.httpClientError(httpErr); res.StatCode >= http.StatusBadRequest {
+		return
+	}
+
+	bodyBuf := bytes.NewBuffer(make([]byte, 0, 4096))
+	_, err = io.Copy(bodyBuf, httpRes.Body)
+	if res = httpClient.httpClientError(err); res.StatCode >= http.StatusBadRequest {
+		return
+	}
+
+	body := bodyBuf.Bytes()
+	defer httpRes.Body.Close()
+
+	res.StatCode = http.StatusOK
+	res.Data = io.NopCloser(bytes.NewBuffer(body))
+
+	return
+}
+
+func (h httpClient) httpClientConfig(client *retryablehttp.Client, options sdk_dto.HttpClientConfigs) {
+	if options.RetryWaitMin != 0 {
+		client.RetryWaitMin = options.RetryWaitMin
+	}
+
+	if options.RetryWaitMax != 0 {
+		client.RetryWaitMax = options.RetryWaitMax
+	}
+
+	if options.RetryMax != 0 {
+		client.RetryMax = options.RetryMax
+	}
+
+	if options.Backoff != nil {
+		client.Backoff = options.Backoff
+	}
+
+	if options.ErrorHandler != nil {
+		client.ErrorHandler = options.ErrorHandler
+	}
+
+	if options.PrepareRetry != nil {
+		client.PrepareRetry = options.PrepareRetry
+	}
+}
+
+func (h httpClient) httpClientError(err error) (res sdk_opt.Response) {
+	if err == nil {
+		res.StatCode = http.StatusOK
+		res.Message = "Network Success"
+		return
+	}
+
+	var netErr *net.OpError
+
+	if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) || errors.Is(err, net.ErrWriteToConnected) {
+		res.StatCode = http.StatusRequestTimeout
+		res.ErrMsg = err.Error()
+
+		return
+	}
+
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, io.ErrNoProgress) {
+		res.StatCode = http.StatusRequestTimeout
+		res.ErrMsg = err.Error()
+
+		return
+	}
+
+	res.StatCode = http.StatusBadRequest
+	res.Message = err.Error()
+
+	return
 }
