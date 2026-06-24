@@ -82,3 +82,8 @@ const (
 	DISBURSEMENT = "disbursement"
 	CREDIT_CARD  = "credit_card"
 )
+
+const (
+	PAYMENT_IN	= "payment_in"
+	PAYMENT_OUT	= "payment_out"
+)
