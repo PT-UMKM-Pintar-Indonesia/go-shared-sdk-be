@@ -1,11 +1,12 @@
 package sdk_dto
 
-import sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+import sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 
 type Config struct {
-	ENV          string `env:"GO_ENV" mapstructure:"GO_ENV" default:"development" envDefault:"development"`
-	PORT         string `env:"PORT" mapstructure:"PORT" default:"4000" envDefault:"4000"`
-	INBOUND_SIZE int    `env:"INBOUND_SIZE" mapstructure:"INBOUND_SIZE" default:"3145728" envDefault:"3145728"`
+	ENV           string `env:"GO_ENV" mapstructure:"GO_ENV" default:"development" envDefault:"development"`
+	PORT          string `env:"PORT" mapstructure:"PORT" default:"4000" envDefault:"4000"`
+	INBOUND_SIZE  int    `env:"INBOUND_SIZE" mapstructure:"INBOUND_SIZE" default:"3145728" envDefault:"3145728"`
+	OUTBOUND_SIZE int    `env:"OUTBOUND_SIZE" mapstructure:"OUTBOUND_SIZE" default:"3145728" envDefault:"3145728"`
 
 	PG_DSN      string `env:"PG_DSN" mapstructure:"PG_DSN"`
 	PG_HOST     string `env:"PG_HOST" mapstructure:"PG_HOST"`
@@ -40,13 +41,15 @@ type Config struct {
 	JWT_SECRET_KEY string `env:"JWT_SECRET_KEY" mapstructure:"JWT_SECRET_KEY"`
 	JWT_EXPIRED    int    `env:"JWT_EXPIRED" mapstructure:"JWT_EXPIRED"`
 
-	RABBITMQ_QSN        string `env:"RABBITMQ_QSN" mapstructure:"RABBITMQ_QSN"`
-	RABBITMQ_VSN        string `env:"RABBITMQ_VSN" mapstructure:"RABBITMQ_VSN"`
-	RABBITMQ_HOST       string `env:"RABBITMQ_HOST" mapstructure:"RABBITMQ_HOST"`
-	RABBITMQ_PORT       int    `env:"RABBITMQ_PORT" mapstructure:"RABBITMQ_PORT"`
-	RABBITMQ_USER       string `env:"RABBITMQ_USER" mapstructure:"RABBITMQ_USER"`
-	RABBITMQ_PASSWORD   string `env:"RABBITMQ_PASSWORD" mapstructure:"RABBITMQ_PASSWORD"`
-	RABBITMQ_SECRET_KEY string `env:"RABBITMQ_SECRET_KEY" mapstructure:"RABBITMQ_SECRET_KEY"`
+	RABBITMQ_QSN         string `env:"RABBITMQ_QSN" mapstructure:"RABBITMQ_QSN"`
+	RABBITMQ_VSN         string `env:"RABBITMQ_VSN" mapstructure:"RABBITMQ_VSN"`
+	RABBITMQ_HOST        string `env:"RABBITMQ_HOST" mapstructure:"RABBITMQ_HOST"`
+	RABBITMQ_PORT        int    `env:"RABBITMQ_PORT" mapstructure:"RABBITMQ_PORT"`
+	RABBITMQ_USER        string `env:"RABBITMQ_USER" mapstructure:"RABBITMQ_USER"`
+	RABBITMQ_PASSWORD    string `env:"RABBITMQ_PASSWORD" mapstructure:"RABBITMQ_PASSWORD"`
+	RABBITMQ_SECRET_KEY  string `env:"RABBITMQ_SECRET_KEY" mapstructure:"RABBITMQ_SECRET_KEY"`
+	RABBITMQ_CONCURRENCY int    `env:"RABBITMQ_CONCURRENCY" mapstructure:"RABBITMQ_CONCURRENCY"`
+	RABBITMQ_QOS         int    `env:"RABBITMQ_QOS" mapstructure:"RABBITMQ_QOS"`
 
 	SMTP_HOST     string `env:"SMTP_HOST" mapstructure:"SMTP_HOST"`
 	SMTP_PORT     int    `env:"SMTP_PORT" mapstructure:"SMTP_PORT"`
@@ -55,15 +58,15 @@ type Config struct {
 }
 
 type (
-	Environtment struct {
-		APP      sdk_opt.Application
-		REDIS    sdk_opt.Redis
-		POSTGRES sdk_opt.Postgres
-		MYSQL    sdk_opt.Mysql
-		DBCONFIG sdk_opt.DatabaseConfig
-		JWT      sdk_opt.Jwt
-		RABBITMQ sdk_opt.RabbitMQ
-		SMTP     sdk_opt.Smtp
+	Environment struct {
+		APP      sdk_dro.Application
+		REDIS    sdk_dro.Redis
+		POSTGRES sdk_dro.Postgres
+		MYSQL    sdk_dro.Mysql
+		DBCONFIG sdk_dro.DatabaseConfig
+		JWT      sdk_dro.Jwt
+		RABBITMQ sdk_dro.RabbitMQ
+		SMTP     sdk_dro.Smtp
 		BIND     any
 	}
 )

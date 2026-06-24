@@ -1,10 +1,11 @@
-package sdk_opt
+package sdk_dro
 
 type (
 	Application struct {
-		ENV          string
-		PORT         string
-		INBOUND_SIZE int
+		ENV           string
+		PORT          string
+		INBOUND_SIZE  int
+		OUTBOUND_SIZE int
 	}
 
 	Redis struct {
@@ -51,13 +52,15 @@ type (
 	}
 
 	RabbitMQ struct {
-		URL      string
-		VSN      string
-		HOST     string
-		PORT     int
-		USER     string
-		PASSWORD string
-		SECRET   string
+		URL         string
+		VSN         string
+		HOST        string
+		PORT        int
+		USER        string
+		PASSWORD    string
+		SECRET      string
+		CONCURRENCY int
+		QOS         int
 	}
 
 	Smtp struct {

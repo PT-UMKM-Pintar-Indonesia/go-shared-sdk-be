@@ -3,7 +3,7 @@ package sdk_helper
 import (
 	"fmt"
 	"net/http"
-	"reflect"
+	"strings"
 	"time"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -11,9 +11,34 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-type responseTimer struct {
-	startTime time.Time
+type sizeWriter struct {
 	http.ResponseWriter
+	size int64
+}
+
+func (w *sizeWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.size += int64(n)
+	return n, err
+}
+
+func formatBytes(size int64) string {
+	const unit = 1024
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+
+	div, exp := int64(unit), 0
+	for n := size / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+
+	return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
+}
+
+func formatDuration(d time.Duration) string {
+	return fmt.Sprintf("%.3fms", float64(d.Microseconds())/1000.0)
 }
 
 var errorCodeMapping = map[int]string{
@@ -31,21 +56,17 @@ var errorCodeMapping = map[int]string{
 	http.StatusInternalServerError: "GENERAL_ERROR",
 }
 
-var startTime time.Time = time.Now()
-
 func Version(path string) string {
 	return fmt.Sprintf("%s/%s", sdk_cons.API, path)
 }
 
 func Api(rw http.ResponseWriter, r *http.Request, options sdk_opt.Response) {
-	rt := &responseTimer{startTime: startTime, ResponseWriter: rw}
+	start := time.Now()
 
-	response := buildResponse(options, r, rt)
-	writeResponse(rt, NewParser(), response)
-}
+	sw := &sizeWriter{ResponseWriter: rw}
 
-func (rt *responseTimer) WriteHeader(code int) {
-	rt.ResponseWriter.WriteHeader(code)
+	response := buildResponse(options, r, start)
+	writeResponse(sw, NewParser(), response)
 }
 
 func getErrorCode(statusCode int) string {
@@ -56,144 +77,70 @@ func getErrorCode(statusCode int) string {
 	return errorCodeMapping[http.StatusInternalServerError]
 }
 
-func isEmptyResponse(resp sdk_opt.Response) bool {
-	return reflect.DeepEqual(resp, sdk_opt.Response{})
-}
-
 func getProtocol(r *http.Request) string {
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		return "https"
 	}
-
 	return "http"
 }
 
 func getIPAddress(r *http.Request) string {
-	ip := r.Header.Get("X-Forwarded-For")
-
-	if ip == "" {
-		ip = r.Header.Get("X-Real-IP")
+	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
+		return strings.Split(ip, ",")[0]
 	}
 
-	if ip == "" {
-		ip = r.Header.Get("X-Client-IP")
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
 	}
 
-	if ip == "" {
-		ip = r.RemoteAddr
-	}
-
-	return ip
+	return r.RemoteAddr
 }
 
-func buildResponse(options sdk_opt.Response, r *http.Request, rt *responseTimer) sdk_opt.Response {
-	response := sdk_opt.Response{
-		StatCode: http.StatusInternalServerError,
-		ErrMsg:   sdk_cons.DEFAULT_ERR_MSG,
-	}
-
-	if isEmptyResponse(options) {
-		defaultErrCode := getErrorCode(http.StatusInternalServerError)
-		response.ErrCode = &defaultErrCode
-		response.Info = sdk_opt.Info{
-			Host:      r.Host,
-			Protocol:  getProtocol(r),
-			Path:      r.URL.Path,
-			Method:    r.Method,
-			Timestamp: time.Now().Format(time.RFC3339),
-			UserAgent: r.UserAgent(),
-			IPAddress: getIPAddress(r),
-		}
-
-		return response
-	}
-
-	response = copyResponseFields(options, response)
-	setResponseDefaults(&response)
-
-	response.Info = sdk_opt.Info{
-		Host:      r.Host,
-		Protocol:  getProtocol(r),
-		Path:      r.URL.Path,
-		Method:    r.Method,
-		Timestamp: time.Now().Format(time.RFC3339),
-		UserAgent: r.UserAgent(),
-		IPAddress: getIPAddress(r),
-	}
-
-	return response
-}
-
-func copyResponseFields(source, target sdk_opt.Response) sdk_opt.Response {
-	if source.StatCode != 0 {
-		target.StatCode = source.StatCode
-	}
-
-	if source.Message != nil {
-		target.Message = source.Message
-	}
-
-	if source.ErrCode != nil {
-		target.ErrCode = source.ErrCode
-	}
-
-	if source.ErrMsg != "" {
-		target.ErrMsg = source.ErrMsg
-	}
-
-	if source.Data != nil {
-		target.Data = source.Data
-	}
-
-	if source.Errors != nil {
-		target.Errors = source.Errors
-	}
-
-	if source.Pagination != nil {
-		target.Pagination = source.Pagination
-	}
-
-	target = sdk_opt.Response{
-		StatCode:   target.StatCode,
-		Message:    target.Message,
-		ErrCode:    target.ErrCode,
-		ErrMsg:     target.ErrMsg,
-		Data:       target.Data,
-		Errors:     target.Errors,
-		Pagination: target.Pagination,
-	}
-
-	return target
-}
-
-func setResponseDefaults(response *sdk_opt.Response) {
-	if response.StatCode == 0 {
-		response.StatCode = http.StatusInternalServerError
-	}
-
-	if response.StatCode >= http.StatusBadRequest && response.ErrCode == nil {
-		defaultErrCode := getErrorCode(int(response.StatCode))
-		response.ErrCode = &defaultErrCode
-	}
-
-	if response.StatCode >= http.StatusInternalServerError && response.ErrMsg == sdk_cons.DEFAULT_ERR_MSG {
-		response.ErrMsg = sdk_cons.DEFAULT_ERR_MSG
-	}
-}
-
-func writeResponse(rw http.ResponseWriter, parser sdk_inf.IParser, response sdk_opt.Response) {
-	rw.Header().Set("Content-Type", "application/json")
-
-	statusCode := response.StatCode
+func buildResponse(options sdk_opt.Response, r *http.Request, start time.Time) sdk_opt.Response {
+	statusCode := options.StatCode
 	if statusCode == 0 {
 		statusCode = http.StatusInternalServerError
 	}
-	rw.WriteHeader(int(statusCode))
 
-	if err := parser.Encode(rw, response); err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-
-		errorResponse := fmt.Sprintf(`{"stat_code":%d, "err_code":"%s", "err_msg":"%s"}`, http.StatusInternalServerError, errorCodeMapping[http.StatusInternalServerError], sdk_cons.DEFAULT_ERR_MSG)
-		fmt.Fprint(rw, errorResponse)
+	errCode := options.ErrCode
+	if statusCode >= http.StatusBadRequest && errCode == nil {
+		code := getErrorCode(int(statusCode))
+		errCode = &code
 	}
+
+	errMsg := options.ErrMsg
+	if errMsg == "" {
+		errMsg = sdk_cons.DEFAULT_ERR_MSG
+	}
+
+	return sdk_opt.Response{
+		StatCode:   statusCode,
+		Message:    options.Message,
+		ErrCode:    errCode,
+		ErrMsg:     errMsg,
+		Data:       options.Data,
+		Errors:     options.Errors,
+		Pagination: options.Pagination,
+		Info: sdk_opt.Info{
+			Host:         r.Host,
+			Protocol:     getProtocol(r),
+			Path:         r.URL.Path,
+			Method:       r.Method,
+			Timestamp:    time.Now().Format(time.RFC3339),
+			ResponseTime: formatDuration(time.Since(start)),
+			UserAgent:    r.UserAgent(),
+			IPAddress:    getIPAddress(r),
+		},
+	}
+}
+
+func writeResponse(sw *sizeWriter, parser sdk_inf.IParser, response sdk_opt.Response) {
+	sw.Header().Set("Content-Type", "application/json")
+	sw.WriteHeader(int(response.StatCode))
+
+	if err := parser.Encode(sw, response); err != nil {
+		return
+	}
+
+	response.Info.ResponseSize = formatBytes(sw.size)
 }

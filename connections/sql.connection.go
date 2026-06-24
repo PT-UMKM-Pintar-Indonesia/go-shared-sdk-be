@@ -3,96 +3,119 @@ package sdk_con
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+	"github.com/uptrace/bun/schema"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
-type connectionPoolConfig struct {
+type DBConfig struct {
+	DSN             string
+	Timeout         time.Duration
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
 	ConnMaxIdleTime time.Duration
+	IsProduction    bool
 }
 
-func defaultConnectionPoolConfig(req sdk_dto.Request[sdk_dto.Environtment]) connectionPoolConfig {
-	return connectionPoolConfig{
-		MaxOpenConns:    req.Config.DBCONFIG.MAX_CONN,
-		MaxIdleConns:    req.Config.DBCONFIG.MAX_IDLE,
-		ConnMaxLifetime: time.Duration(req.Config.DBCONFIG.CON_MAX) * time.Minute,
-		ConnMaxIdleTime: time.Duration(req.Config.DBCONFIG.CON_IDLE) * time.Minute,
-	}
+type DBOption func(*sql.DB)
+
+type DriverFactory func(cfg *DBConfig) (*sql.DB, schema.Dialect, error)
+
+var driverRegistry = map[string]DriverFactory{
+	sdk_cons.POSTGRES: createPostgres,
+	sdk_cons.MYSQL:    createMySQL,
+	sdk_cons.SQLITE:   createSqlite,
+	sdk_cons.SQLITE3:  createSqlite3,
 }
 
-func sqlConnectionWithConfig(ctx context.Context, driver string, req sdk_dto.Request[sdk_dto.Environtment], poolConfig connectionPoolConfig) (*bun.DB, error) {
-	var (
-		bundb *bun.DB
-		db    *sql.DB
-		err   error
-	)
-
-	switch driver {
-	case sdk_cons.POSTGRES:
-		connector := pgdriver.NewConnector(
-			pgdriver.WithDSN(req.Config.POSTGRES.URL),
-			pgdriver.WithTimeout(time.Duration(req.Config.DBCONFIG.TIMEOUT)*time.Second),
-			pgdriver.WithDialTimeout(time.Duration(req.Config.DBCONFIG.DIAL_TIMEOUT)*time.Second),
-			pgdriver.WithReadTimeout(time.Duration(req.Config.DBCONFIG.READ_TIMEOUT)*time.Second),
-			pgdriver.WithWriteTimeout(time.Duration(req.Config.DBCONFIG.WRITE_TIMEOUT)*time.Second),
-		)
-		db = sql.OpenDB(connector)
-
-	case sdk_cons.MYSQL:
-		db, err = sql.Open(sdk_cons.MYSQL, req.Config.MYSQL.URL)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, errors.New("driver unsupported")
+func SqlConnection(ctx context.Context, driver string, cfg *DBConfig, opts ...DBOption) (*bun.DB, error) {
+	factory, ok := driverRegistry[driver]
+	if !ok {
+		return nil, fmt.Errorf("driver %s unsupported", driver)
 	}
 
-	db.SetMaxOpenConns(poolConfig.MaxOpenConns)
-	db.SetMaxIdleConns(poolConfig.MaxIdleConns)
-	db.SetConnMaxLifetime(poolConfig.ConnMaxLifetime)
-	db.SetConnMaxIdleTime(poolConfig.ConnMaxIdleTime)
+	db, dialect, err := factory(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create driver %s: %w", driver, err)
+	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	if len(opts) == 0 {
+		opts = append(opts, defaultPoolConfig(cfg))
+	}
+
+	for _, opt := range opts {
+		opt(db)
+	}
+
+	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	if err = db.PingContext(ctx); err != nil {
-		return nil, err
+	if err = db.PingContext(pingCtx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db ping failed: %w", err)
 	}
 
-	switch driver {
-	case sdk_cons.POSTGRES:
-		bundb = bun.NewDB(db, pgdialect.New())
+	bundb := bun.NewDB(db, dialect)
 
-	case sdk_cons.MYSQL:
-		bundb = bun.NewDB(db, mysqldialect.New())
-	}
-
-	if req.Config.APP.ENV != sdk_cons.PROD {
-		bundb.AddQueryHook(bundebug.NewQueryHook(
-			bundebug.WithEnabled(true),
-			bundebug.WithVerbose(true),
-			bundebug.FromEnv("BUNDEBUG"),
-		))
+	if !cfg.IsProduction {
+		bundb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	}
 
 	return bundb, nil
 }
 
-func SqlConnection(ctx context.Context, driver string, req sdk_dto.Request[sdk_dto.Environtment]) (*bun.DB, error) {
-	return sqlConnectionWithConfig(ctx, driver, req, defaultConnectionPoolConfig(req))
+func createPostgres(cfg *DBConfig) (*sql.DB, schema.Dialect, error) {
+	connector := pgdriver.NewConnector(
+		pgdriver.WithDSN(cfg.DSN),
+		pgdriver.WithTimeout(cfg.Timeout),
+	)
+
+	return sql.OpenDB(connector), pgdialect.New(), nil
+}
+func createMySQL(cfg *DBConfig) (*sql.DB, schema.Dialect, error) {
+	dsn := cfg.DSN
+
+	if !strings.Contains(dsn, "parseTime=true") {
+		sep := "?"
+		if strings.Contains(dsn, "?") {
+			sep = "&"
+		}
+		dsn += sep + "parseTime=true"
+	}
+
+	db, err := sql.Open("mysql", dsn)
+	return db, mysqldialect.New(), err
+}
+
+func createSqlite(cfg *DBConfig) (*sql.DB, schema.Dialect, error) {
+	db, err := sql.Open("sqlite", cfg.DSN)
+	return db, sqlitedialect.New(), err
+}
+
+func createSqlite3(cfg *DBConfig) (*sql.DB, schema.Dialect, error) {
+	db, err := sql.Open("sqlite3", cfg.DSN)
+	return db, sqlitedialect.New(), err
+}
+
+func defaultPoolConfig(cfg *DBConfig) DBOption {
+	return func(db *sql.DB) {
+		db.SetMaxOpenConns(cfg.MaxOpenConns)
+		db.SetMaxIdleConns(cfg.MaxIdleConns)
+		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+		db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+	}
 }

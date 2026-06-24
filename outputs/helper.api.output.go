@@ -1,4 +1,4 @@
-package sdk_opt
+package sdk_dro
 
 type (
 	Error struct {
@@ -9,14 +9,14 @@ type (
 	}
 
 	Response struct {
-		StatCode   float64 `json:"stat_code"`
-		Message    any     `json:"message,omitempty"`
-		ErrCode    any     `json:"err_code,omitempty"`
-		ErrMsg     any     `json:"err_msg,omitempty"`
-		Pagination any     `json:"pagination,omitempty"`
-		Data       any     `json:"data,omitempty"`
-		Errors     any     `json:"errors,omitempty"`
-		Info       Info    `json:"info"`
+		StatCode   int  `json:"stat_code"`
+		Message    any  `json:"message,omitempty"`
+		ErrCode    any  `json:"err_code,omitempty"`
+		ErrMsg     any  `json:"err_msg,omitempty"`
+		Pagination any  `json:"pagination,omitempty"`
+		Data       any  `json:"data,omitempty"`
+		Errors     any  `json:"errors,omitempty"`
+		Info       Info `json:"info"`
 	}
 
 	Info struct {
@@ -28,5 +28,6 @@ type (
 		UserAgent    any `json:"user_agent"`
 		Timestamp    any `json:"timestamp"`
 		ResponseTime any `json:"response_time,omitempty"`
+		ResponseSize any `json:"response_size,omitempty"`
 	}
 )

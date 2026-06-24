@@ -1,142 +1,123 @@
 package sdk_helper
 
 import (
-	"crypto/aes"
-	cpr "crypto/cipher"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/hex"
+	"encoding/base64"
 	"errors"
-
-	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	"golang.org/x/crypto/scrypt"
+	"fmt"
+	"strings"
+	"time"
 )
 
-type cipher struct{}
+type (
+	ICipher interface {
+		Base64Encode(plainText string) string
+		Base64Decode(cipherText string) (string, error)
+		EncodeRotation(plainText string) string
+		DecodeRotation(cipherText string) (string, error)
+		CaesarEncrypt(plainText string, rotation int) string
+		CaesarDecrypt(cipherText string, rotation int) string
+		RotateNumber(plainNumber string, shift int) string
+		DerotateNumber(cipherNumber string, shift int) string
+	}
 
-func NewCipher() sdk_inf.ICipher {
-	return cipher{}
+	cipher struct{}
+)
+
+func NewCipher() ICipher {
+	return &cipher{}
 }
 
-func (h cipher) AES256Encrypt(secretKey, plainText string) (string, error) {
-	secretKeyByte := make([]byte, len(secretKey))
-	secretKeyByte = []byte(secretKey)
-
-	plainTextByte := make([]byte, len(plainText))
-	plainTextByte = []byte(plainText)
-
-	tagSize := 16
-
-	if len(secretKeyByte) < 32 {
-		return "", errors.New("Secretkey length mismatch")
-	}
-
-	key, err := scrypt.Key([]byte(secretKey), []byte("salt"), 1024, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cpr.NewGCMWithTagSize(block, tagSize)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonceSize); err != nil {
-		return "", err
-	}
-
-	cipherText := gcm.Seal(nonceSize, nonceSize, []byte(plainTextByte), nil)
-
-	return hex.EncodeToString(cipherText), nil
+func (h *cipher) Base64Encode(plainText string) string {
+	return base64.StdEncoding.EncodeToString([]byte(plainText))
 }
 
-func (h cipher) AES256Decrypt(secretKey string, cipherText string) (string, error) {
-	secretKeyByte := make([]byte, len(secretKey))
-	secretKeyByte = []byte(secretKey)
-	tagSize := 16
-
-	if len(secretKeyByte) < 32 {
-		return "", errors.New("Secretkey length mismatch")
-	}
-
-	key, err := scrypt.Key(secretKeyByte, []byte("salt"), 1024, 8, 1, 32)
+func (h *cipher) Base64Decode(cipherText string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(cipherText)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("base64 decode failed: %w", err)
 	}
-
-	cipherTextByte, err := hex.DecodeString(cipherText)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cpr.NewGCMWithTagSize(block, tagSize)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonceSize); err != nil {
-		return "", err
-	} else if len(cipherTextByte) < len(nonceSize) {
-		return "", errors.New("Cipher text to short")
-	}
-
-	nonce, ciphertext := cipherTextByte[:len(nonceSize)], cipherTextByte[len(nonceSize):]
-	plaintext, err := gcm.Open(nil, []byte(nonce), []byte(ciphertext), nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
+	return string(decoded), nil
 }
 
-func (h cipher) HMACSHA512Sign(secretKey, data string) (string, error) {
-	hashHMAC512 := hmac.New(sha512.New, []byte(secretKey))
+func (h *cipher) EncodeRotation(plainText string) string {
+	timestamp := time.Now().Format("20060102150405")
+	payload := fmt.Sprintf("%s:%s", plainText, timestamp)
 
-	if _, err := hashHMAC512.Write([]byte(data)); err != nil {
-		return "", err
+	b64 := h.Base64Encode(payload)
+	n := len(b64)
+	if n == 0 {
+		return ""
 	}
 
-	return hex.EncodeToString(hashHMAC512.Sum(nil)), nil
+	shift := 32 % n
+	rotated := b64[shift:] + b64[:shift]
+
+	return h.CaesarEncrypt(rotated, 26)
 }
 
-func (h cipher) HMACSHA512Verify(secretKey, data, hash string) bool {
-	hashHMAC512 := hmac.New(sha512.New, []byte(secretKey))
-
-	if _, err := hashHMAC512.Write([]byte(data)); err != nil {
-		return false
+func (h *cipher) DecodeRotation(cipherText string) (string, error) {
+	decrypted := h.CaesarDecrypt(cipherText, 26)
+	n := len(decrypted)
+	if n == 0 {
+		return "", errors.New("empty cipher text")
 	}
 
-	return hmac.Equal([]byte(hash), hashHMAC512.Sum(nil))
+	shift := 32 % n
+	originalB64 := decrypted[n-shift:] + decrypted[:n-shift]
+
+	return h.Base64Decode(originalB64)
 }
 
-func (h cipher) SHA256Sign(plainText string) (string, error) {
-	hashSHA256 := sha256.New()
-
-	if _, err := hashSHA256.Write([]byte(plainText)); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hashSHA256.Sum(nil)), nil
+func (h *cipher) CaesarEncrypt(plainText string, rotation int) string {
+	return h.applyCaesar(plainText, rotation)
 }
 
-func (h cipher) SHA512Sign(plainText string) (string, error) {
-	hashSHA512 := sha512.New()
+func (h *cipher) CaesarDecrypt(cipherText string, rotation int) string {
+	return h.applyCaesar(cipherText, -rotation)
+}
 
-	if _, err := hashSHA512.Write([]byte(plainText)); err != nil {
-		return "", err
+func (h *cipher) applyCaesar(input string, rotation int) string {
+	var builder strings.Builder
+	builder.Grow(len(input))
+	shift := rune((rotation%26 + 26) % 26)
+	if shift == 0 {
+		return input
 	}
-	return hex.EncodeToString(hashSHA512.Sum(nil)), nil
+
+	for _, char := range input {
+		switch {
+		case char >= 'A' && char <= 'Z':
+			builder.WriteRune((char-'A'+shift)%26 + 'A')
+		case char >= 'a' && char <= 'z':
+			builder.WriteRune((char-'a'+shift)%26 + 'a')
+		default:
+			builder.WriteRune(char)
+		}
+	}
+
+	return builder.String()
+}
+
+func (h *cipher) RotateNumber(plainNumber string, rotation int) string {
+	shift := rune((rotation%10 + 10) % 10)
+	if shift == 0 {
+		return plainNumber
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(plainNumber))
+
+	for _, r := range plainNumber {
+		if r >= '0' && r <= '9' {
+			builder.WriteRune((r-'0'+shift)%10 + '0')
+		} else {
+			builder.WriteRune(r)
+		}
+	}
+
+	return builder.String()
+}
+
+func (h *cipher) DerotateNumber(cipherNumber string, rotation int) string {
+	return h.RotateNumber(cipherNumber, -rotation)
 }

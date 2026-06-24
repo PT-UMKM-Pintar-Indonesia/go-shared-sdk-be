@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"time"
 
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type (
@@ -32,7 +32,7 @@ type (
 		PrivKeyRaw string                     `json:"privKeyRaw"`
 		SigKey     string                     `json:"sigKey"`
 		CipherKey  string                     `json:"cipherKey"`
-		JweKey     sdk_opt.JweEncryptMetadata `json:"jweKey"`
+		JweKey     sdk_dro.JweEncryptMetadata `json:"jweKey"`
 	}
 
 	SignMetadata struct {
