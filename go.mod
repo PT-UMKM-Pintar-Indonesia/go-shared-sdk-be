@@ -5,7 +5,6 @@ go 1.25.11
 require (
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-viper/mapstructure/v2 v2.2.1
-	github.com/uptrace/bun/dialect/sqlitedialect v1.2.18
 	github.com/wagslane/go-rabbitmq v0.12.4
 	golang.org/x/crypto v0.38.0
 )
@@ -76,9 +75,10 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.20.1
-	github.com/uptrace/bun v1.2.18
+	github.com/uptrace/bun v1.2.11
 	github.com/uptrace/bun/dialect/mysqldialect v1.2.11
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
+	github.com/uptrace/bun/dialect/sqlitedialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
 	github.com/uptrace/bun/extra/bundebug v1.2.11
 )
