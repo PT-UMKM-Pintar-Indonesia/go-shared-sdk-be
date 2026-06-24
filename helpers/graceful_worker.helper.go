@@ -95,10 +95,6 @@ func runHealthCheck(ctx context.Context, opts *GracefulWorkerOptions) {
 	}
 }
 
-func GracefulWorker(name string, ctx context.Context, wg *sync.WaitGroup, handler func(ctx context.Context, wg *sync.WaitGroup)) {
-	_ = graceful(&GracefulWorkerOptions{
-		Name:      name,
-		WaitGroup: wg,
-		Handler:   handler,
-	})
+func GracefulWorker(opts *GracefulWorkerOptions) {
+	_ = graceful(opts)
 }
