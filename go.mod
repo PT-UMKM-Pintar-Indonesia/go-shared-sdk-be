@@ -1,11 +1,11 @@
 module github.com/PT-UMKM-Pintar-Indonesia/shared-sdk
 
-go 1.25.11
+go 1.26.7
 
 require (
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-viper/mapstructure/v2 v2.2.1
-	github.com/wagslane/go-rabbitmq v0.12.4
+	github.com/wagslane/go-rabbitmq v0.16.0
 	golang.org/x/crypto v0.49.0
 )
 
@@ -28,7 +28,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
-	github.com/rabbitmq/amqp091-go v1.7.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.12.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
@@ -55,6 +55,7 @@ require (
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
@@ -69,9 +70,8 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/lestrrat-go/jwx/v3 v3.0.2
-	github.com/lib/pq v1.10.9
 	github.com/lithammer/shortuuid v3.0.0+incompatible
-	github.com/mattn/go-sqlite3 v1.14.42
+	github.com/makiuchi-d/gozxing v0.1.1
 	github.com/redis/go-redis/v9 v9.9.0
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.9.3
@@ -79,7 +79,6 @@ require (
 	github.com/uptrace/bun v1.2.11
 	github.com/uptrace/bun/dialect/mysqldialect v1.2.11
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
-	github.com/uptrace/bun/dialect/sqlitedialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
 	github.com/uptrace/bun/extra/bundebug v1.2.11
 )

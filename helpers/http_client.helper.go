@@ -14,72 +14,95 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/sirupsen/logrus"
 
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type httpClient struct {
-	standart *http.Client
+	standard *http.Client
 }
 
-func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
+func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	client := retryablehttp.NewClient()
-
 	parser := NewParser()
-	standart := client.StandardClient()
+
+	standardClient := client.StandardClient()
 
 	if options.Transport != nil {
 		client.HTTPClient.Transport = options.Transport
 	}
 
-	httpClient := httpClient{standart: standart}
-	httpRes := new(http.Response)
-	httpErr := error(nil)
+	hc := httpClient{standard: standardClient}
 
 	client.RetryWaitMin = 3 * time.Second
 	client.RetryWaitMax = 5 * time.Second
-	client.RetryMax = 5
+	client.RetryMax = 10
 	client.Backoff = retryablehttp.DefaultBackoff
 
-	httpClient.httpClientConfig(client, options.Configs)
+	hc.httpClientConfig(client, &options.Configs)
 
-	client.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, i int) {
-		lgr, err := httputil.DumpRequestOut(r, true)
+	client.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
+		lgr, err := httputil.DumpRequestOut(r, sdk_cons.TRUE)
 		if err != nil {
-			logrus.Error(err)
+			logrus.WithError(err).Error("Failed to dump request")
 			return
 		}
-		logrus.Info(fmt.Sprintf("\nHTTP REQUEST: \n%s", string(lgr)))
+
+		logrus.WithFields(logrus.Fields{
+			"namespace":   "http_client",
+			"url":         r.URL.String(),
+			"method":      r.Method,
+			"headers":     r.Header,
+			"raw_request": TrimLogString(string(lgr)),
+		}).Info("LOG_WORKER_HTTP_REQUEST")
 	}
 
 	client.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
-		lgr, err := httputil.DumpResponse(r, true)
+		lgr, err := httputil.DumpResponse(r, sdk_cons.TRUE)
 		if err != nil {
-			logrus.Error(err)
+			logrus.WithError(err).Error("Failed to dump response")
 			return
 		}
-		logrus.Info(fmt.Sprintf("\nHTTP RESPONSE: \n%s", string(lgr)))
+
+		logrus.WithFields(logrus.Fields{
+			"namespace":    "http_client",
+			"url":          r.Request.URL.String(),
+			"method":       r.Request.Method,
+			"status_code":  r.StatusCode,
+			"raw_response": TrimLogString(string(lgr)),
+		}).Info("LOG_WORKER_HTTP_RESPONSE")
 	}
 
-	if options.Body == nil {
-		options.Body = bytes.NewReader(nil)
-	} else {
-		if strings.Contains(options.Headers["Content-Type"], "json") {
-			body, err := parser.Marshal(options.Body)
+	var bodyReader io.Reader
+
+	switch v := options.Body.(type) {
+	case nil:
+		bodyReader = bytes.NewReader(nil)
+	case io.Reader:
+		bodyReader = v
+	case string:
+		bodyReader = strings.NewReader(v)
+	case []byte:
+		bodyReader = bytes.NewReader(v)
+	default:
+		if options.Headers != nil && strings.Contains(strings.ToLower(options.Headers["Content-Type"]), "json") {
+			bodyBytes, err := parser.Marshal(v)
 			if err != nil {
 				res.StatCode = http.StatusBadRequest
-				res.ErrMsg = err.Error()
-
+				res.ErrMsg = fmt.Errorf("failed to marshal body: %w", err).Error()
 				return
 			}
-			options.Body = bytes.NewReader(body)
+
+			bodyReader = bytes.NewReader(bodyBytes)
 		} else {
-			options.Body = bytes.NewReader([]byte(options.Body.(string)))
+			bodyReader = strings.NewReader(fmt.Sprintf("%v", v))
 		}
 	}
 
-	req, err := http.NewRequestWithContext(options.Ctx, options.Method, options.Url, options.Body.(io.Reader))
-	if res = httpClient.httpClientError(err); res.StatCode >= http.StatusBadRequest {
+	req, err := http.NewRequestWithContext(options.Ctx, options.Method, options.Url, bodyReader)
+	if res = hc.httpClientError(err); res.StatCode >= http.StatusBadRequest {
 		return
 	}
 
@@ -89,31 +112,25 @@ func NewHttpClient(options sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 		}
 	}
 
-	if options.Transport != nil {
-		options.Transport.RoundTrip(req)
-	}
-
-	httpRes, httpErr = standart.Do(req)
-	if res = httpClient.httpClientError(httpErr); res.StatCode >= http.StatusBadRequest {
+	httpRes, httpErr := hc.standard.Do(req)
+	if res = hc.httpClientError(httpErr); res.StatCode >= http.StatusBadRequest {
 		return
 	}
-
-	bodyBuf := bytes.NewBuffer(make([]byte, 0, 4096))
-	_, err = io.Copy(bodyBuf, httpRes.Body)
-	if res = httpClient.httpClientError(err); res.StatCode >= http.StatusBadRequest {
-		return
-	}
-
-	body := bodyBuf.Bytes()
 	defer httpRes.Body.Close()
 
+	bodyBytes, err := io.ReadAll(httpRes.Body)
+	if res = hc.httpClientError(err); res.StatCode >= http.StatusBadRequest {
+		return
+	}
+
 	res.StatCode = http.StatusOK
-	res.Data = io.NopCloser(bytes.NewBuffer(body))
+	res.Message = "Network Success"
+	res.Data = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	return
 }
 
-func (h httpClient) httpClientConfig(client *retryablehttp.Client, options sdk_dto.HttpClientConfigs) {
+func (h *httpClient) httpClientConfig(client *retryablehttp.Client, options *sdk_dto.HttpClientConfigs) {
 	if options.RetryWaitMin != 0 {
 		client.RetryWaitMin = options.RetryWaitMin
 	}
@@ -139,7 +156,7 @@ func (h httpClient) httpClientConfig(client *retryablehttp.Client, options sdk_d
 	}
 }
 
-func (h httpClient) httpClientError(err error) (res sdk_opt.Response) {
+func (h *httpClient) httpClientError(err error) (res sdk_opt.Response) {
 	if err == nil {
 		res.StatCode = http.StatusOK
 		res.Message = "Network Success"
@@ -151,14 +168,12 @@ func (h httpClient) httpClientError(err error) (res sdk_opt.Response) {
 	if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) || errors.Is(err, net.ErrWriteToConnected) {
 		res.StatCode = http.StatusRequestTimeout
 		res.ErrMsg = err.Error()
-
 		return
 	}
 
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, io.ErrNoProgress) {
 		res.StatCode = http.StatusRequestTimeout
 		res.ErrMsg = err.Error()
-
 		return
 	}
 

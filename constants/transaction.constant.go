@@ -71,19 +71,22 @@ const (
 )
 
 const (
-	TRANSFER     = "transfer"
-	PAYMENT      = "payment"
-	WITHDRAW     = "withdraw"
-	INVOICE      = "invoice"
-	DEPOSIT      = "deposit"
-	TRANSACTION  = "transaction"
-	INQUIRY      = "inquiry"
-	TOPUP        = "topup"
-	DISBURSEMENT = "disbursement"
-	CREDIT_CARD  = "credit_card"
+	TRANSFER        = "transfer"
+	PAYMENT         = "payment"
+	WITHDRAW        = "withdraw"
+	INVOICE         = "invoice"
+	DEPOSIT         = "deposit"
+	TRANSACTION     = "transaction"
+	INQUIRY         = "inquiry"
+	TOPUP           = "topup"
+	DISBURSEMENT    = "disbursement"
+	CREDIT_CARD     = "credit_card"
+	INQUIRY_STATUS  = "inquiry_status"
+	QRIS_STATIC     = "qris_static"
+	VIRTUAL_ACCOUNT = "virtual_account"
 )
 
 const (
-	PAYMENT_IN	= "payment_in"
-	PAYMENT_OUT	= "payment_out"
+	PAYMENT_IN  = "payment_in"
+	PAYMENT_OUT = "payment_out"
 )

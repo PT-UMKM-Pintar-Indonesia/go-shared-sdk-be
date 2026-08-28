@@ -7,6 +7,8 @@ var (
 )
 
 const (
+	TIME_FORMAT_GMT7 = "2006-01-02T15:04:05+07:00"
+
 	DEV  = "development"
 	STAG = "staging"
 	PROD = "production"

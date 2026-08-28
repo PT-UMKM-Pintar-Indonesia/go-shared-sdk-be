@@ -36,34 +36,46 @@ type (
 		RequestData       any     `json:"request_data,omitempty"`
 		FeeType           string  `json:"fee_type,omitempty"`
 		MerchantID        string  `json:"merchant_id,omitempty"`
+		MerchantNetworkID string  `json:"merchant_network_id,omitempty"`
+		QrEmvcoImage      string  `json:"qr_emvco_image,omitempty"`
 	}
 
 	CallbackTransaction struct {
-		TransactionID     string           `json:"transaction_id"`
-		PartnerID         string           `json:"partner_id,omitempty"`
-		Amount            any              `json:"amount"`
-		FeeAmount         any              `json:"fee_amount"`
-		Bank              string           `json:"bank,omitempty"`
-		Channel           string           `json:"channel,omitempty"`
-		ExternalID        string           `json:"external_id,omitempty"`
-		Status            string           `json:"status"`
-		StatusMessage     string           `json:"status_message,omitempty"`
-		NetworkData       any              `json:"network_data,omitempty"`
-		AccountID         string           `json:"account_id,omitempty"`
-		NetworkReference  string           `json:"network_reference,omitempty"`
-		PaymentVerifiedAt string           `json:"payment_verified_at"`
-		IsPaid            bool             `json:"is_paid"`
-		RequestID         string           `json:"request_id"`
-		AddressNumber     string           `json:"address_number,omitempty"`
-		AddressName       string           `json:"address_name,omitempty"`
-		RequestData       any              `json:"request_data,omitempty"`
-		FeeType           string           `json:"fee_type,omitempty"`
-		MerchantID        string           `json:"merchant_id,omitempty"`
-		WebhookUrl        string           `json:"webhook_url,omitempty"`
-		AdditionalInfo    any              `json:"additional_info,omitempty"`
-		VaNumber          string           `json:"va_number,omitempty"`
-		TransactionType   string           `json:"transaction_type,omitempty"`
-		TransactionInfo   *TransactionInfo `json:"transaction_info,omitempty"`
+		TransactionID     string `json:"transaction_id"`
+		PartnerID         string `json:"partner_id,omitempty"`
+		Amount            any    `json:"amount"`
+		FeeAmount         any    `json:"fee_amount"`
+		Bank              string `json:"bank,omitempty"`
+		Channel           string `json:"channel,omitempty"`
+		ExternalID        string `json:"external_id,omitempty"`
+		Status            string `json:"status"`
+		StatusMessage     string `json:"status_message,omitempty"`
+		NetworkData       any    `json:"network_data,omitempty"`
+		AccountID         string `json:"account_id,omitempty"`
+		NetworkReference  string `json:"network_reference,omitempty"`
+		PaymentVerifiedAt string `json:"payment_verified_at"`
+		IsPaid            bool   `json:"is_paid"`
+		RequestID         string `json:"request_id"`
+		AddressNumber     string `json:"address_number,omitempty"`
+		AddressName       string `json:"address_name,omitempty"`
+		RequestData       any    `json:"request_data,omitempty"`
+		FeeType           string `json:"fee_type,omitempty"`
+		MerchantID        string `json:"merchant_id,omitempty"`
+		MerchantNetworkID string `json:"merchant_network_id,omitempty"`
+		WebhookUrl        string `json:"webhook_url,omitempty"`
+		AdditionalInfo    any    `json:"additional_info,omitempty"`
+		VaNumber          string `json:"va_number,omitempty"`
+		TransactionType   string `json:"transaction_type,omitempty"`
+		IssuerId          string `json:"issuer_id,omitempty"`
+		IssuerName        string `json:"issuer_name,omitempty"`
+		CustomerPan       string `json:"customer_pan,omitempty"`
+		MerchantFee       string `json:"merchant_fee,omitempty"`
+		MerchantPan       string `json:"merchant_pan,omitempty"`
+		ReferenceId       string `json:"reference_id,omitempty"`
+		AcquirerName      string `json:"acquirer_name,omitempty"`
+		MerchantName      string `json:"merchant_name,omitempty"`
+		BuyerFullname     string `json:"buyer_fullname,omitempty"`
+		MerchantLocation  string `json:"merchant_location,omitempty"`
 	}
 
 	TransactionInfo struct {

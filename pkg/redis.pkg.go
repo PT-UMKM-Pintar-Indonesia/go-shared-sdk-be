@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	sdk_con "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/connections"
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	goredis "github.com/redis/go-redis/v9"
 )
@@ -15,8 +17,13 @@ type redis struct {
 	redis *goredis.Client
 }
 
-func NewRedis(con *goredis.Client) sdk_inf.IRedis {
-	return &redis{redis: con}
+func NewRedis(opt *sdk_dto.RedisClientOptions) (sdk_inf.IRedis, *goredis.Client, error) {
+	con, err := sdk_con.RedisConnection(opt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &redis{redis: con}, con, nil
 }
 
 func (p *redis) Client(ctx context.Context) *goredis.Client {

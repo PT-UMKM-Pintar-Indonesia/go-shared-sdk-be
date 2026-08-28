@@ -12,8 +12,10 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/jinzhu/copier"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 )
 
@@ -196,4 +198,70 @@ func (h *transform) Convert(src any, dest any) error {
 	}
 
 	return nil
+}
+
+func (h *transform) DecodeUUID(s string) string {
+	if len(s) != 32 {
+		return sdk_cons.EMPTY
+	}
+
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+			return sdk_cons.EMPTY
+		}
+	}
+
+	b := make([]byte, 36)
+	copy(b[0:8], s[0:8])
+	b[8] = '-'
+	copy(b[9:13], s[8:12])
+	b[13] = '-'
+	copy(b[14:18], s[12:16])
+	b[18] = '-'
+	copy(b[19:23], s[16:20])
+	b[23] = '-'
+	copy(b[24:36], s[20:32])
+
+	return string(b)
+}
+
+func (h *transform) EncodeUUID(s string) string {
+	if len(s) != 36 {
+		return sdk_cons.EMPTY
+	}
+
+	if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
+		return sdk_cons.EMPTY
+	}
+
+	b := make([]byte, 32)
+	copy(b[0:8], s[0:8])
+	copy(b[8:12], s[9:13])
+	copy(b[12:16], s[14:18])
+	copy(b[16:20], s[19:23])
+	copy(b[20:32], s[24:36])
+
+	for i := 0; i < len(b); i++ {
+		ch := b[i]
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+			logrus.Error("EncodeUUID - Invalid hex character detected")
+			return sdk_cons.EMPTY
+		}
+	}
+
+	return string(b)
+}
+
+func (h *transform) BodyToRaw(body any) string {
+	if body == nil {
+		return `{ "error": "body is empty" }`
+	}
+
+	bodyRaw, err := NewParser().Marshal(body)
+	if err != nil {
+		return fmt.Sprintf(`{ "error": %s }`, err.Error())
+	}
+
+	return string(bodyRaw)
 }
