@@ -47,7 +47,7 @@ func (h *signature) decode(data string, encoding string) ([]byte, error) {
 	}
 }
 
-func (h *signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.SignatureResponse) {
+func (h *signature) GenerateAsymmetric(req *sdk_dto.Asymmetric) (res sdk_opt.SignatureResponse) {
 	cert := NewCert()
 
 	var sb strings.Builder
@@ -62,7 +62,7 @@ func (h *signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.Sign
 		return
 	}
 
-	certRes := cert.PrivateKeyRawToKey(sdk_dto.PrivateKeyRawToKey{
+	certRes := cert.PrivateKeyRawToKey(&sdk_dto.PrivateKeyRawToKey{
 		KeyType:       req.PrivateKeyType,
 		KeyRawPrivate: req.PrivateKey,
 		Password:      req.Password,
@@ -83,7 +83,7 @@ func (h *signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.Sign
 	return
 }
 
-func (h *signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
+func (h *signature) GenerateSymmetric(req *sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
 	bodyHash := sha256.Sum256(req.Body)
 	bodyHashHex := strings.ToLower(hex.EncodeToString(bodyHash[:]))
 
@@ -105,7 +105,7 @@ func (h *signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.Signatu
 	return
 }
 
-func (h *signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.SignatureResponse) {
+func (h *signature) VerifyAsymmetric(req *sdk_dto.VerifyAsymmetric) (res sdk_opt.SignatureResponse) {
 	cert := NewCert()
 
 	var sb strings.Builder
@@ -119,7 +119,7 @@ func (h *signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.
 		return
 	}
 
-	certRes := cert.PublicKeyRawToKey(sdk_dto.PublicKeyRawToKey{
+	certRes := cert.PublicKeyRawToKey(&sdk_dto.PublicKeyRawToKey{
 		KeyType:      req.PublicKeyType,
 		KeyRawPublic: req.PublicKey,
 	})
@@ -144,8 +144,8 @@ func (h *signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.
 	return
 }
 
-func (h *signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
-	internalSigRes := h.GenerateSymmetric(sdk_dto.Symetric{
+func (h *signature) VerifySymmetric(req *sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
+	internalSigRes := h.GenerateSymmetric(&sdk_dto.Symetric{
 		Method:       req.Method,
 		Url:          req.Url,
 		AccessToken:  req.AccessToken,

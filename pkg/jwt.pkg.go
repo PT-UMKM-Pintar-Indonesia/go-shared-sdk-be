@@ -69,7 +69,7 @@ func (p *jsonWebToken) createSecret(prefix string, body []byte) (*sdk_dro.Secret
 		return nil, fmt.Errorf("aes encrypt failed: %w", err)
 	}
 
-	privateKey := p.cert.GenerateKey(sdk_dto.GeneratePrivateKey{
+	privateKey := p.cert.GenerateKey(&sdk_dto.GeneratePrivateKey{
 		Password:       cipherKey,
 		KeySize:        sdk_cons.KEY_SIZE_4096,
 		PrivateKeyType: sdk_cons.PRIVPKCS8,
@@ -96,7 +96,7 @@ func (p *jsonWebToken) createSignature(prefix string, body any) (*sdk_dro.Signat
 		return nil, err
 	}
 
-	rsaPrivateKey := p.cert.PrivateKeyRawToKey(sdk_dto.PrivateKeyRawToKey{
+	rsaPrivateKey := p.cert.PrivateKeyRawToKey(&sdk_dto.PrivateKeyRawToKey{
 		KeyRawPrivate: []byte(secretKey.PrivKeyRaw),
 		Password:      secretKey.CipherKey,
 	})

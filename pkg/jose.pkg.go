@@ -127,7 +127,7 @@ func (p *jose) ExportJsonWebKey(privateKey *rsa.PrivateKey) (*sdk_dro.JwkMetadat
 	jwkRawMetadataReq := sdk_dto.JwkMetadata{}
 	jwkRawMetadataRes := sdk_dro.JwkMetadata{}
 
-	privateKeyRawToKey := sdk_dto.PrivateKeyToRaw{KeyPrivate: privateKey}
+	privateKeyRawToKey := &sdk_dto.PrivateKeyToRaw{KeyPrivate: privateKey}
 	rsaPrivateKey := p.cert.PrivateKeyToRaw(privateKeyRawToKey)
 	if rsaPrivateKey.Error != nil {
 		return nil, rsaPrivateKey.Error
@@ -204,7 +204,7 @@ func (p *jose) JwtVerify(prefix string, token string, redis sdk_inf.IRedis) (jwt
 		return nil, errors.New("invalid secretkey or signature")
 	}
 
-	privateKey := p.cert.PrivateKeyRawToKey(sdk_dto.PrivateKeyRawToKey{
+	privateKey := p.cert.PrivateKeyRawToKey(&sdk_dto.PrivateKeyRawToKey{
 		KeyRawPrivate: []byte(signatureMetadata.PrivKeyRaw),
 		Password:      signatureMetadata.CipherKey,
 	})

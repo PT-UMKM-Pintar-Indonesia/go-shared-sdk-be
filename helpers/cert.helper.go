@@ -22,7 +22,7 @@ func NewCert() sdk_inf.ICert {
 	return &cert{}
 }
 
-func (h *cert) GenerateKey(req sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResponse) {
+func (h *cert) GenerateKey(req *sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResponse) {
 	if req.KeySize < 2048 {
 		res.Error = errors.New("security risk: key size must be at least 2048 bits")
 		return
@@ -34,7 +34,7 @@ func (h *cert) GenerateKey(req sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResp
 		return
 	}
 
-	privRes := h.PrivateKeyToRaw(sdk_dto.PrivateKeyToRaw{
+	privRes := h.PrivateKeyToRaw(&sdk_dto.PrivateKeyToRaw{
 		KeyType:    req.PrivateKeyType,
 		KeyPrivate: privateKey,
 	})
@@ -58,7 +58,7 @@ func (h *cert) GenerateKey(req sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResp
 		res.KeyRawPrivate = privRes.KeyRawPrivate
 	}
 
-	pubRes := h.PublicKeyToRaw(sdk_dto.PublicKeyToRaw{
+	pubRes := h.PublicKeyToRaw(&sdk_dto.PublicKeyToRaw{
 		KeyType:   req.PublicKeyType,
 		KeyPublic: &privateKey.PublicKey,
 	})
@@ -72,7 +72,7 @@ func (h *cert) GenerateKey(req sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResp
 	return
 }
 
-func (h *cert) PrivateKeyRawToKey(req sdk_dto.PrivateKeyRawToKey) (res sdk_opt.CertResponse) {
+func (h *cert) PrivateKeyRawToKey(req *sdk_dto.PrivateKeyRawToKey) (res sdk_opt.CertResponse) {
 	block, _ := pem.Decode(req.KeyRawPrivate)
 	if block == nil {
 		res.Error = errors.New("failed to decode PEM block")
@@ -118,7 +118,7 @@ func (h *cert) PrivateKeyRawToKey(req sdk_dto.PrivateKeyRawToKey) (res sdk_opt.C
 	return
 }
 
-func (h *cert) PublicKeyRawToKey(req sdk_dto.PublicKeyRawToKey) (res sdk_opt.CertResponse) {
+func (h *cert) PublicKeyRawToKey(req *sdk_dto.PublicKeyRawToKey) (res sdk_opt.CertResponse) {
 	block, _ := pem.Decode(req.KeyRawPublic)
 	if block == nil {
 		res.Error = errors.New("failed to decode PEM block")
@@ -150,7 +150,7 @@ func (h *cert) PublicKeyRawToKey(req sdk_dto.PublicKeyRawToKey) (res sdk_opt.Cer
 	return
 }
 
-func (h *cert) PrivateKeyToRaw(req sdk_dto.PrivateKeyToRaw) (res sdk_opt.CertResponse) {
+func (h *cert) PrivateKeyToRaw(req *sdk_dto.PrivateKeyToRaw) (res sdk_opt.CertResponse) {
 	var der []byte
 	var err error
 
@@ -173,7 +173,7 @@ func (h *cert) PrivateKeyToRaw(req sdk_dto.PrivateKeyToRaw) (res sdk_opt.CertRes
 	return
 }
 
-func (h *cert) PublicKeyToRaw(req sdk_dto.PublicKeyToRaw) (res sdk_opt.CertResponse) {
+func (h *cert) PublicKeyToRaw(req *sdk_dto.PublicKeyToRaw) (res sdk_opt.CertResponse) {
 	var der []byte
 	var err error
 
@@ -216,7 +216,7 @@ func (h *cert) base64ToRaw(input string, expectedTypes ...string) ([]byte, strin
 	return nil, "", fmt.Errorf("unexpected PEM type: %s", block.Type)
 }
 
-func (h *cert) PrivateKeyBase64ToRaw(req sdk_dto.PrivateKeyBase64ToRaw) (res sdk_opt.CertResponse) {
+func (h *cert) PrivateKeyBase64ToRaw(req *sdk_dto.PrivateKeyBase64ToRaw) (res sdk_opt.CertResponse) {
 	raw, keyType, err := h.base64ToRaw(req.KeyRawPrivate, sdk_cons.PRIVPKCS1, sdk_cons.PRIVPKCS8, sdk_cons.CERTIFICATE)
 	if err != nil {
 		res.Error = err
@@ -228,7 +228,7 @@ func (h *cert) PrivateKeyBase64ToRaw(req sdk_dto.PrivateKeyBase64ToRaw) (res sdk
 	return
 }
 
-func (h *cert) PublicKeyBase64ToRaw(req sdk_dto.PublicKeyBase64ToRaw) (res sdk_opt.CertResponse) {
+func (h *cert) PublicKeyBase64ToRaw(req *sdk_dto.PublicKeyBase64ToRaw) (res sdk_opt.CertResponse) {
 	raw, keyType, err := h.base64ToRaw(req.KeyRawPublic, sdk_cons.PUBPKCS1, sdk_cons.PUBPKCS8, sdk_cons.CERTIFICATE)
 	if err != nil {
 		res.Error = err

@@ -314,80 +314,80 @@ func (h *rabbitmqClient) ensureRPCReplyConsumer() error {
 	return h.consumerErr
 }
 
-func (h *rabbitmqClient) Publisher(req sdk_dto.Request[sdk_dto.RabbitOptions]) error {
-	if req.Payload.ContentType == sdk_cons.EMPTY {
-		req.Payload.ContentType = "application/json"
+func (h *rabbitmqClient) Publisher(req *sdk_dto.RabbitOptions) error {
+	if req.ContentType == sdk_cons.EMPTY {
+		req.ContentType = "application/json"
 	}
 
-	if req.Payload.AppID == sdk_cons.EMPTY {
-		req.Payload.AppID = shortuuid.New()
+	if req.AppID == sdk_cons.EMPTY {
+		req.AppID = shortuuid.New()
 	}
 
-	if time.Until(req.Payload.Timestamp) < 1 {
-		req.Payload.Timestamp = time.Now().Local()
+	if time.Until(req.Timestamp) < 1 {
+		req.Timestamp = time.Now().Local()
 	}
 
-	publisher, err := h.getOrCreatePublisher(req.Payload.ExchangeName, req.Payload.ExchangeType, req.Payload.Args)
+	publisher, err := h.getOrCreatePublisher(req.ExchangeName, req.ExchangeType, req.Args)
 	if err != nil {
 		return err
 	}
 
-	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Payload.Body)
+	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Body)
 	if err != nil {
 		return err
 	}
 
-	err = publisher.PublishWithContext(h.ctx, bodyByte, []string{req.Payload.QueueName},
+	err = publisher.PublishWithContext(h.ctx, bodyByte, []string{req.QueueName},
 		amqp.WithPublishOptionsPersistentDelivery,
-		amqp.WithPublishOptionsExchange(req.Payload.ExchangeName),
-		amqp.WithPublishOptionsContentType(req.Payload.ContentType),
-		amqp.WithPublishOptionsTimestamp(req.Payload.Timestamp),
-		amqp.WithPublishOptionsHeaders(req.Payload.Args),
+		amqp.WithPublishOptionsExchange(req.ExchangeName),
+		amqp.WithPublishOptionsContentType(req.ContentType),
+		amqp.WithPublishOptionsTimestamp(req.Timestamp),
+		amqp.WithPublishOptionsHeaders(req.Args),
 	)
 
 	if err != nil {
-		h.markPublisherUnhealthy(req.Payload.ExchangeName, req.Payload.ExchangeType)
+		h.markPublisherUnhealthy(req.ExchangeName, req.ExchangeType)
 	}
 
 	return err
 }
 
-func (h *rabbitmqClient) Consumer(req sdk_dto.Request[sdk_dto.RabbitOptions], callback func(d amqp.Delivery) (action amqp.Action)) error {
-	if req.Payload.ConsumerID == sdk_cons.EMPTY {
-		req.Payload.ConsumerID = shortuuid.New()
+func (h *rabbitmqClient) Consumer(req *sdk_dto.RabbitOptions, callback func(d amqp.Delivery) (action amqp.Action)) error {
+	if req.ConsumerID == sdk_cons.EMPTY {
+		req.ConsumerID = shortuuid.New()
 	}
 
-	if req.Payload.Concurrency < 1 {
-		req.Payload.Concurrency = int(float64(runtime.NumCPU()) * 0.75)
+	if req.Concurrency < 1 {
+		req.Concurrency = int(float64(runtime.NumCPU()) * 0.75)
 
-		if req.Payload.Concurrency < 1 {
-			req.Payload.Concurrency = 1
+		if req.Concurrency < 1 {
+			req.Concurrency = 1
 		}
 	}
 
-	if req.Payload.Prefetch < 1 {
-		req.Payload.Prefetch = 5
+	if req.Prefetch < 1 {
+		req.Prefetch = 5
 	}
 
-	consumer, err := amqp.NewConsumer(h.rabbitmq, req.Payload.QueueName,
-		amqp.WithConsumerOptionsExchangeName(req.Payload.ExchangeName),
-		amqp.WithConsumerOptionsExchangeKind(req.Payload.ExchangeType),
+	consumer, err := amqp.NewConsumer(h.rabbitmq, req.QueueName,
+		amqp.WithConsumerOptionsExchangeName(req.ExchangeName),
+		amqp.WithConsumerOptionsExchangeKind(req.ExchangeType),
 		amqp.WithConsumerOptionsBinding(amqp.Binding{
-			RoutingKey: req.Payload.QueueName,
+			RoutingKey: req.QueueName,
 			BindingOptions: amqp.BindingOptions{
 				Declare: true,
 				NoWait:  true,
-				Args:    req.Payload.Args,
+				Args:    req.Args,
 			},
 		}),
 		amqp.WithConsumerOptionsExchangeDurable,
 		amqp.WithConsumerOptionsExchangeDeclare,
 		amqp.WithConsumerOptionsQueueDurable,
-		amqp.WithConsumerOptionsConsumerName(req.Payload.ConsumerID),
-		amqp.WithConsumerOptionsConsumerAutoAck(req.Payload.Ack),
-		amqp.WithConsumerOptionsConcurrency(req.Payload.Concurrency),
-		amqp.WithConsumerOptionsQOSPrefetch(req.Payload.Prefetch),
-		amqp.WithConsumerOptionsQueueArgs(req.Payload.Args),
+		amqp.WithConsumerOptionsConsumerName(req.ConsumerID),
+		amqp.WithConsumerOptionsConsumerAutoAck(req.Ack),
+		amqp.WithConsumerOptionsConcurrency(req.Concurrency),
+		amqp.WithConsumerOptionsQOSPrefetch(req.Prefetch),
+		amqp.WithConsumerOptionsQueueArgs(req.Args),
 		amqp.WithConsumerOptionsLogging,
 	)
 
@@ -398,7 +398,7 @@ func (h *rabbitmqClient) Consumer(req sdk_dto.Request[sdk_dto.RabbitOptions], ca
 	return consumer.Run(callback)
 }
 
-func (h *rabbitmqClient) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]) ([]byte, error) {
+func (h *rabbitmqClient) PublisherRPC(req *sdk_dto.RabbitOptions) ([]byte, error) {
 	if err := h.ensureRPCReplyConsumer(); err != nil {
 		return nil, fmt.Errorf("RPC consumer not ready: %w", err)
 	}
@@ -413,25 +413,25 @@ func (h *rabbitmqClient) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	publisher, err := h.getOrCreatePublisher(req.Payload.ExchangeName, req.Payload.ExchangeType, req.Payload.Args)
+	publisher, err := h.getOrCreatePublisher(req.ExchangeName, req.ExchangeType, req.Args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get publisher: %w", err)
 	}
 
-	if req.Payload.ContentType == sdk_cons.EMPTY {
-		req.Payload.ContentType = "application/json"
+	if req.ContentType == sdk_cons.EMPTY {
+		req.ContentType = "application/json"
 	}
 
-	if req.Payload.AppID == sdk_cons.EMPTY {
-		req.Payload.AppID = shortuuid.New()
+	if req.AppID == sdk_cons.EMPTY {
+		req.AppID = shortuuid.New()
 	}
 
-	if req.Payload.CorrelationID == sdk_cons.EMPTY {
-		req.Payload.CorrelationID = shortuuid.New()
+	if req.CorrelationID == sdk_cons.EMPTY {
+		req.CorrelationID = shortuuid.New()
 	}
 
-	if time.Until(req.Payload.Timestamp) < 1 {
-		req.Payload.Timestamp = time.Now().Local()
+	if time.Until(req.Timestamp) < 1 {
+		req.Timestamp = time.Now().Local()
 	}
 
 	rpcReq := &rpcRequest{
@@ -439,39 +439,39 @@ func (h *rabbitmqClient) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]
 		createdAt: time.Now(),
 	}
 
-	h.requests.Store(req.Payload.CorrelationID, rpcReq)
+	h.requests.Store(req.CorrelationID, rpcReq)
 
 	defer func() {
-		h.requests.Delete(req.Payload.CorrelationID)
+		h.requests.Delete(req.CorrelationID)
 		select {
 		case <-rpcReq.ch:
 		default:
 		}
 	}()
 
-	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Payload.Body)
+	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = publisher.PublishWithContext(h.ctx, bodyByte, []string{req.Payload.QueueName},
+	err = publisher.PublishWithContext(h.ctx, bodyByte, []string{req.QueueName},
 		amqp.WithPublishOptionsPersistentDelivery,
-		amqp.WithPublishOptionsExchange(req.Payload.ExchangeName),
-		amqp.WithPublishOptionsCorrelationID(req.Payload.CorrelationID),
+		amqp.WithPublishOptionsExchange(req.ExchangeName),
+		amqp.WithPublishOptionsCorrelationID(req.CorrelationID),
 		amqp.WithPublishOptionsReplyTo(h.replyQueueName),
-		amqp.WithPublishOptionsAppID(req.Payload.AppID),
-		amqp.WithPublishOptionsUserID(req.Payload.UserID),
-		amqp.WithPublishOptionsContentType(req.Payload.ContentType),
-		amqp.WithPublishOptionsTimestamp(req.Payload.Timestamp),
-		amqp.WithPublishOptionsHeaders(req.Payload.Args),
+		amqp.WithPublishOptionsAppID(req.AppID),
+		amqp.WithPublishOptionsUserID(req.UserID),
+		amqp.WithPublishOptionsContentType(req.ContentType),
+		amqp.WithPublishOptionsTimestamp(req.Timestamp),
+		amqp.WithPublishOptionsHeaders(req.Args),
 	)
 
 	if err != nil {
-		h.markPublisherUnhealthy(req.Payload.ExchangeName, req.Payload.ExchangeType)
+		h.markPublisherUnhealthy(req.ExchangeName, req.ExchangeType)
 		return nil, fmt.Errorf("failed to publish RPC request: %w", err)
 	}
 
-	timeoutDuration := req.Payload.Timeout
+	timeoutDuration := req.Timeout
 	if timeoutDuration <= 0 {
 		timeoutDuration = defaultRPCTimeout
 	}
@@ -491,48 +491,48 @@ func (h *rabbitmqClient) PublisherRPC(req sdk_dto.Request[sdk_dto.RabbitOptions]
 		return r, nil
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return nil, fmt.Errorf("RPC timeout after %v for correlation_id: %s", timeoutDuration, req.Payload.CorrelationID)
+			return nil, fmt.Errorf("RPC timeout after %v for correlation_id: %s", timeoutDuration, req.CorrelationID)
 		}
 
 		return nil, fmt.Errorf("RPC cancelled: %w", ctx.Err())
 	}
 }
 
-func (h *rabbitmqClient) ConsumerRPC(req sdk_dto.Request[sdk_dto.RabbitOptions], handler func(delivery amqp.Delivery) (action amqp.Action)) error {
-	if req.Payload.ConsumerID == sdk_cons.EMPTY {
-		req.Payload.ConsumerID = shortuuid.New()
+func (h *rabbitmqClient) ConsumerRPC(req *sdk_dto.RabbitOptions, handler func(delivery amqp.Delivery) (action amqp.Action)) error {
+	if req.ConsumerID == sdk_cons.EMPTY {
+		req.ConsumerID = shortuuid.New()
 	}
 
-	if req.Payload.Concurrency < 1 {
-		req.Payload.Concurrency = int(float64(runtime.NumCPU()) * 0.75)
+	if req.Concurrency < 1 {
+		req.Concurrency = int(float64(runtime.NumCPU()) * 0.75)
 
-		if req.Payload.Concurrency < 1 {
-			req.Payload.Concurrency = 1
+		if req.Concurrency < 1 {
+			req.Concurrency = 1
 		}
 	}
 
-	if req.Payload.Prefetch < 1 {
-		req.Payload.Prefetch = 5
+	if req.Prefetch < 1 {
+		req.Prefetch = 5
 	}
 
-	consumer, err := amqp.NewConsumer(h.rabbitmq, req.Payload.QueueName,
-		amqp.WithConsumerOptionsExchangeName(req.Payload.ExchangeName),
-		amqp.WithConsumerOptionsExchangeKind(req.Payload.ExchangeType),
+	consumer, err := amqp.NewConsumer(h.rabbitmq, req.QueueName,
+		amqp.WithConsumerOptionsExchangeName(req.ExchangeName),
+		amqp.WithConsumerOptionsExchangeKind(req.ExchangeType),
 		amqp.WithConsumerOptionsBinding(amqp.Binding{
-			RoutingKey: req.Payload.QueueName,
+			RoutingKey: req.QueueName,
 			BindingOptions: amqp.BindingOptions{
 				Declare: true,
 				NoWait:  true,
-				Args:    req.Payload.Args,
+				Args:    req.Args,
 			},
 		}),
 		amqp.WithConsumerOptionsExchangeDurable,
 		amqp.WithConsumerOptionsQueueDurable,
-		amqp.WithConsumerOptionsConsumerName(req.Payload.ConsumerID),
-		amqp.WithConsumerOptionsConsumerAutoAck(req.Payload.Ack),
-		amqp.WithConsumerOptionsConcurrency(req.Payload.Concurrency),
-		amqp.WithConsumerOptionsQOSPrefetch(req.Payload.Prefetch),
-		amqp.WithConsumerOptionsQueueArgs(req.Payload.Args),
+		amqp.WithConsumerOptionsConsumerName(req.ConsumerID),
+		amqp.WithConsumerOptionsConsumerAutoAck(req.Ack),
+		amqp.WithConsumerOptionsConcurrency(req.Concurrency),
+		amqp.WithConsumerOptionsQOSPrefetch(req.Prefetch),
+		amqp.WithConsumerOptionsQueueArgs(req.Args),
 		amqp.WithConsumerOptionsLogging,
 	)
 
@@ -543,21 +543,21 @@ func (h *rabbitmqClient) ConsumerRPC(req sdk_dto.Request[sdk_dto.RabbitOptions],
 	return consumer.Run(handler)
 }
 
-func (h *rabbitmqClient) ReplyToDeliveryPublisher(req sdk_dto.Request[sdk_dto.RabbitOptions]) error {
-	if req.Payload.Delivery.Body == nil {
+func (h *rabbitmqClient) ReplyToDeliveryPublisher(req *sdk_dto.RabbitOptions) error {
+	if req.Delivery.Body == nil {
 		return errors.New("delivery body cannot be nil")
 	}
 
-	if req.Payload.Delivery.ReplyTo == sdk_cons.EMPTY || req.Payload.Delivery.CorrelationId == sdk_cons.EMPTY {
+	if req.Delivery.ReplyTo == sdk_cons.EMPTY || req.Delivery.CorrelationId == sdk_cons.EMPTY {
 		return errors.New("invalid delivery: ReplyTo or CorrelationId is empty")
 	}
 
-	publisher, err := h.getOrCreatePublisher(req.Payload.ExchangeName, req.Payload.ExchangeType, req.Payload.Args)
+	publisher, err := h.getOrCreatePublisher(req.ExchangeName, req.ExchangeType, req.Args)
 	if err != nil {
 		return err
 	}
 
-	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Payload.Body)
+	bodyByte, err := sdk_helper.NewParser().Marshal(&req.Body)
 	if err != nil {
 		return err
 	}
@@ -565,19 +565,19 @@ func (h *rabbitmqClient) ReplyToDeliveryPublisher(req sdk_dto.Request[sdk_dto.Ra
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = publisher.PublishWithContext(ctx, bodyByte, []string{req.Payload.Delivery.ReplyTo},
+	err = publisher.PublishWithContext(ctx, bodyByte, []string{req.Delivery.ReplyTo},
 		amqp.WithPublishOptionsPersistentDelivery,
-		amqp.WithPublishOptionsCorrelationID(req.Payload.Delivery.CorrelationId),
-		amqp.WithPublishOptionsAppID(req.Payload.Delivery.AppId),
-		amqp.WithPublishOptionsUserID(req.Payload.Delivery.UserId),
-		amqp.WithPublishOptionsContentType(req.Payload.Delivery.ContentType),
-		amqp.WithPublishOptionsTimestamp(req.Payload.Delivery.Timestamp),
-		amqp.WithPublishOptionsExpiration(req.Payload.Expired),
-		amqp.WithPublishOptionsHeaders(req.Payload.Args),
+		amqp.WithPublishOptionsCorrelationID(req.Delivery.CorrelationId),
+		amqp.WithPublishOptionsAppID(req.Delivery.AppId),
+		amqp.WithPublishOptionsUserID(req.Delivery.UserId),
+		amqp.WithPublishOptionsContentType(req.Delivery.ContentType),
+		amqp.WithPublishOptionsTimestamp(req.Delivery.Timestamp),
+		amqp.WithPublishOptionsExpiration(req.Expired),
+		amqp.WithPublishOptionsHeaders(req.Args),
 	)
 
 	if err != nil {
-		h.markPublisherUnhealthy(req.Payload.ExchangeName, req.Payload.ExchangeType)
+		h.markPublisherUnhealthy(req.ExchangeName, req.ExchangeType)
 	}
 
 	return err

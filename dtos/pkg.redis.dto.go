@@ -48,5 +48,13 @@ type (
 		DisableIdentity              bool
 		IdentitySuffix               string
 		UnstableResp3                bool
+		MasterName                   string
+		SentinelAddrs                []string
+		SentinelUsername             string
+		SentinelPassword             string
+		RouteByLatency               bool
+		RouteRandomly                bool
+		ReplicaOnly                  bool
+		UseDisconnectedReplicas      bool
 	}
 )

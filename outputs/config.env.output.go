@@ -9,12 +9,16 @@ type (
 	}
 
 	Redis struct {
-		URL      string
-		HOST     string
-		PORT     int
-		USER     string
-		PASSWORD string
-		DB       string
+		URL              string
+		URLS             []string
+		HOST             string
+		PORT             int
+		USER             string
+		PASSWORD         string
+		DB               string
+		CLUSTER          bool
+		CLUSTER_NAME     string
+		CLUSTER_PASSWORD string
 	}
 
 	Postgres struct {
@@ -53,6 +57,7 @@ type (
 
 	RabbitMQ struct {
 		URL         string
+		URLS        []string
 		VSN         string
 		HOST        string
 		PORT        int
@@ -61,6 +66,7 @@ type (
 		SECRET      string
 		CONCURRENCY int
 		QOS         int
+		CLUSTER     bool
 	}
 
 	Smtp struct {
@@ -70,7 +76,7 @@ type (
 		PASSWORD string
 	}
 
-	Environtment struct {
+	Environment struct {
 		APP      Application
 		REDIS    Redis
 		POSTGRES Postgres

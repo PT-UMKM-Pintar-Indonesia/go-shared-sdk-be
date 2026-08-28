@@ -92,6 +92,7 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 			if err != nil {
 				res.StatCode = http.StatusBadRequest
 				res.ErrMsg = fmt.Errorf("failed to marshal body: %w", err).Error()
+
 				return
 			}
 
@@ -168,12 +169,14 @@ func (h *httpClient) httpClientError(err error) (res sdk_opt.Response) {
 	if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) || errors.Is(err, net.ErrWriteToConnected) {
 		res.StatCode = http.StatusRequestTimeout
 		res.ErrMsg = err.Error()
+
 		return
 	}
 
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, io.ErrNoProgress) {
 		res.StatCode = http.StatusRequestTimeout
 		res.ErrMsg = err.Error()
+
 		return
 	}
 

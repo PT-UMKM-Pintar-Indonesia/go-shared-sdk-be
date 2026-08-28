@@ -6,11 +6,11 @@ import (
 )
 
 type ICert interface {
-	GenerateKey(req sdk_dto.GeneratePrivateKey) (res opt.CertResponse)
-	PrivateKeyRawToKey(sdk_dto sdk_dto.PrivateKeyRawToKey) (res opt.CertResponse)
-	PublicKeyRawToKey(sdk_dto sdk_dto.PublicKeyRawToKey) (res opt.CertResponse)
-	PrivateKeyToRaw(sdk_dto sdk_dto.PrivateKeyToRaw) (res opt.CertResponse)
-	PublicKeyToRaw(sdk_dto sdk_dto.PublicKeyToRaw) (res opt.CertResponse)
-	PrivateKeyBase64ToRaw(sdk_dto sdk_dto.PrivateKeyBase64ToRaw) (res opt.CertResponse)
-	PublicKeyBase64ToRaw(sdk_dto sdk_dto.PublicKeyBase64ToRaw) (res opt.CertResponse)
+	GenerateKey(req *sdk_dto.GeneratePrivateKey) (res opt.CertResponse)
+	PrivateKeyRawToKey(req *sdk_dto.PrivateKeyRawToKey) (res opt.CertResponse)
+	PublicKeyRawToKey(req *sdk_dto.PublicKeyRawToKey) (res opt.CertResponse)
+	PrivateKeyToRaw(req *sdk_dto.PrivateKeyToRaw) (res opt.CertResponse)
+	PublicKeyToRaw(req *sdk_dto.PublicKeyToRaw) (res opt.CertResponse)
+	PrivateKeyBase64ToRaw(req *sdk_dto.PrivateKeyBase64ToRaw) (res opt.CertResponse)
+	PublicKeyBase64ToRaw(req *sdk_dto.PublicKeyBase64ToRaw) (res opt.CertResponse)
 }

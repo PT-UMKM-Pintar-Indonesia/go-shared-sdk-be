@@ -31,26 +31,31 @@ type Config struct {
 	DB_CONMAX        int `env:"DB_CONMAX" mapstructure:"DB_CONMAX" default:"30" envDefault:"30"`
 	DB_CONIDLE       int `env:"DB_CONIDLE" mapstructure:"DB_CONIDLE" default:"15" envDefault:"15"`
 
-	REDIS_CSN      string `env:"REDIS_CSN" mapstructure:"REDIS_CSN"`
-	REDIS_HOST     string `env:"REDIS_HOST" mapstructure:"REDIS_HOST"`
-	REDIS_PORT     int    `env:"REDIS_PORT" mapstructure:"REDIS_PORT"`
-	REDIS_USER     string `env:"REDIS_USER" mapstructure:"REDIS_USER"`
-	REDIS_PASSWORD string `env:"REDIS_PASSWORD" mapstructure:"REDIS_PASSWORD"`
-	REDIS_DB       string `env:"REDIS_DB" mapstructure:"REDIS_DB"`
+	REDIS_CSN              string `env:"REDIS_CSN" mapstructure:"REDIS_CSN"`
+	REDIS_HOST             string `env:"REDIS_HOST" mapstructure:"REDIS_HOST"`
+	REDIS_PORT             int    `env:"REDIS_PORT" mapstructure:"REDIS_PORT"`
+	REDIS_USER             string `env:"REDIS_USER" mapstructure:"REDIS_USER"`
+	REDIS_PASSWORD         string `env:"REDIS_PASSWORD" mapstructure:"REDIS_PASSWORD"`
+	REDIS_DB               string `env:"REDIS_DB" mapstructure:"REDIS_DB"`
+	REDIS_CLUSTER          bool   `env:"REDIS_CLUSTER" mapstructure:"REDIS_CLUSTER"`
+	REDIS_CSN_CLUSTER      string `env:"REDIS_CSN_CLUSTER" mapstructure:"REDIS_CSN_CLUSTER"`
+	REDIS_NAME_CLUSTER     string `env:"REDIS_NAME_CLUSTER" mapstructure:"REDIS_NAME_CLUSTER"`
+	REDIS_PASSWORD_CLUSTER string `env:"REDIS_PASSWORD_CLUSTER" mapstructure:"REDIS_PASSWORD_CLUSTER"`
 
 	JWT_SECRET_KEY string `env:"JWT_SECRET_KEY" mapstructure:"JWT_SECRET_KEY"`
 	JWT_EXPIRED    int    `env:"JWT_EXPIRED" mapstructure:"JWT_EXPIRED"`
 
-	RABBITMQ_QSN          string `env:"RABBITMQ_QSN" mapstructure:"RABBITMQ_QSN"`
-	RABBITMQ_VSN          string `env:"RABBITMQ_VSN" mapstructure:"RABBITMQ_VSN"`
-	RABBITMQ_HOST         string `env:"RABBITMQ_HOST" mapstructure:"RABBITMQ_HOST"`
-	RABBITMQ_PORT         int    `env:"RABBITMQ_PORT" mapstructure:"RABBITMQ_PORT"`
-	RABBITMQ_USER         string `env:"RABBITMQ_USER" mapstructure:"RABBITMQ_USER"`
-	RABBITMQ_PASSWORD     string `env:"RABBITMQ_PASSWORD" mapstructure:"RABBITMQ_PASSWORD"`
-	RABBITMQ_SECRET_KEY   string `env:"RABBITMQ_SECRET_KEY" mapstructure:"RABBITMQ_SECRET_KEY"`
-	RABBITMQ_CONCURRENCY  int    `env:"RABBITMQ_CONCURRENCY" mapstructure:"RABBITMQ_CONCURRENCY"`
-	RABBITMQ_QOS          int    `env:"RABBITMQ_QOS" mapstructure:"RABBITMQ_QOS"`
-	RABBITMQ_CLUSTER_MODE bool   `env:"RABBITMQ_CLUSTER_MODE" mapstructure:"RABBITMQ_CLUSTER_MODE"`
+	RABBITMQ_QSN         string `env:"RABBITMQ_QSN" mapstructure:"RABBITMQ_QSN"`
+	RABBITMQ_VSN         string `env:"RABBITMQ_VSN" mapstructure:"RABBITMQ_VSN"`
+	RABBITMQ_HOST        string `env:"RABBITMQ_HOST" mapstructure:"RABBITMQ_HOST"`
+	RABBITMQ_PORT        int    `env:"RABBITMQ_PORT" mapstructure:"RABBITMQ_PORT"`
+	RABBITMQ_USER        string `env:"RABBITMQ_USER" mapstructure:"RABBITMQ_USER"`
+	RABBITMQ_PASSWORD    string `env:"RABBITMQ_PASSWORD" mapstructure:"RABBITMQ_PASSWORD"`
+	RABBITMQ_SECRET_KEY  string `env:"RABBITMQ_SECRET_KEY" mapstructure:"RABBITMQ_SECRET_KEY"`
+	RABBITMQ_CONCURRENCY int    `env:"RABBITMQ_CONCURRENCY" mapstructure:"RABBITMQ_CONCURRENCY"`
+	RABBITMQ_QOS         int    `env:"RABBITMQ_QOS" mapstructure:"RABBITMQ_QOS"`
+	RABBITMQ_QSN_CLUSTER string `env:"RABBITMQ_QSN_CLUSTER" mapstructure:"RABBITMQ_QSN_CLUSTER"`
+	RABBITMQ_CLUSTER     bool   `env:"RABBITMQ_CLUSTER" mapstructure:"RABBITMQ_CLUSTER"`
 
 	SMTP_HOST     string `env:"SMTP_HOST" mapstructure:"SMTP_HOST"`
 	SMTP_PORT     int    `env:"SMTP_PORT" mapstructure:"SMTP_PORT"`

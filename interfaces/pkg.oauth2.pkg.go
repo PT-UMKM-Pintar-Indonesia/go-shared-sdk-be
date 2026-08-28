@@ -13,7 +13,7 @@ type IOauth2 interface {
 	Manager() *manage.Manager
 	Client() *store.ClientStore
 	Server(*manage.Manager) *server.Server
-	GenerateClientCredentials(req sdk_dto.GenerateClientCredentialsOptions) (oauth2.TokenInfo, error)
-	GenerateServerClientCredentials(req sdk_dto.GenerateServerClientCredentialsOptions) (oauth2.TokenInfo, *server.Server, error)
-	LoadAccessToken(req sdk_dto.LoadAccessTokenOptions) (oauth2.TokenInfo, error)
+	GenerateClientCredentials(req *sdk_dto.GenerateClientCredentialsOptions) (oauth2.TokenInfo, error)
+	GenerateServerClientCredentials(req *sdk_dto.GenerateServerClientCredentialsOptions) (oauth2.TokenInfo, *server.Server, error)
+	LoadAccessToken(req *sdk_dto.LoadAccessTokenOptions) (oauth2.TokenInfo, error)
 }

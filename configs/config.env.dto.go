@@ -3,15 +3,16 @@ package sdk_config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/caarlos0/env"
 	"github.com/spf13/viper"
 
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func NewEnvirontment(name, path, ext string, bind any) (*sdk_opt.Environtment, error) {
+func NewEnvironment(name, path, ext string, bind any) (*sdk_dro.Environment, error) {
 	cfg := &sdk_dto.Config{}
 
 	if err := loadConfig(name, path, ext, cfg, bind); err != nil {
@@ -52,22 +53,26 @@ func loadConfig(name, path, ext string, cfg, bind any) error {
 	return nil
 }
 
-func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
-	return &sdk_opt.Environtment{
-		APP: sdk_opt.Application{
+func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_dro.Environment {
+	return &sdk_dro.Environment{
+		APP: sdk_dro.Application{
 			ENV:          cfg.ENV,
 			PORT:         cfg.PORT,
 			INBOUND_SIZE: cfg.INBOUND_SIZE,
 		},
-		REDIS: sdk_opt.Redis{
-			URL:      cfg.REDIS_CSN,
-			HOST:     cfg.REDIS_HOST,
-			PORT:     cfg.REDIS_PORT,
-			USER:     cfg.REDIS_USER,
-			PASSWORD: cfg.REDIS_PASSWORD,
-			DB:       cfg.REDIS_DB,
+		REDIS: sdk_dro.Redis{
+			URL:              cfg.REDIS_CSN,
+			URLS:             strings.Split(cfg.REDIS_CSN_CLUSTER, ","),
+			HOST:             cfg.REDIS_HOST,
+			PORT:             cfg.REDIS_PORT,
+			USER:             cfg.REDIS_USER,
+			PASSWORD:         cfg.REDIS_PASSWORD,
+			DB:               cfg.REDIS_DB,
+			CLUSTER:          cfg.REDIS_CLUSTER,
+			CLUSTER_NAME:     cfg.REDIS_NAME_CLUSTER,
+			CLUSTER_PASSWORD: cfg.REDIS_PASSWORD_CLUSTER,
 		},
-		POSTGRES: sdk_opt.Postgres{
+		POSTGRES: sdk_dro.Postgres{
 			URL:      cfg.PG_DSN,
 			HOST:     cfg.PG_HOST,
 			PORT:     cfg.PG_PORT,
@@ -75,7 +80,7 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
 			PASSWORD: cfg.PG_PASSWORD,
 			DB:       cfg.PG_DB,
 		},
-		MYSQL: sdk_opt.Mysql{
+		MYSQL: sdk_dro.Mysql{
 			URL:      cfg.MYSQL_DSN,
 			HOST:     cfg.MYSQL_HOST,
 			PORT:     cfg.MYSQL_PORT,
@@ -83,7 +88,7 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
 			PASSWORD: cfg.MYSQL_PASSWORD,
 			DB:       cfg.MYSQL_DB,
 		},
-		DBCONFIG: sdk_opt.DatabaseConfig{
+		DBCONFIG: sdk_dro.DatabaseConfig{
 			TIMEOUT:       cfg.DB_TIMEOUT,
 			DIAL_TIMEOUT:  cfg.DB_DIAL_TIMEOUT,
 			READ_TIMEOUT:  cfg.DB_READ_TIMEOUT,
@@ -93,12 +98,13 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
 			CON_MAX:       cfg.DB_CONMAX,
 			CON_IDLE:      cfg.DB_CONIDLE,
 		},
-		JWT: sdk_opt.Jwt{
+		JWT: sdk_dro.Jwt{
 			SECRET:  cfg.JWT_SECRET_KEY,
 			EXPIRED: cfg.JWT_EXPIRED,
 		},
-		RABBITMQ: sdk_opt.RabbitMQ{
+		RABBITMQ: sdk_dro.RabbitMQ{
 			URL:         cfg.RABBITMQ_QSN,
+			URLS:        strings.Split(cfg.RABBITMQ_QSN_CLUSTER, ","),
 			VSN:         cfg.RABBITMQ_VSN,
 			HOST:        cfg.RABBITMQ_HOST,
 			PORT:        cfg.RABBITMQ_PORT,
@@ -107,8 +113,9 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_opt.Environtment {
 			SECRET:      cfg.RABBITMQ_SECRET_KEY,
 			CONCURRENCY: cfg.RABBITMQ_CONCURRENCY,
 			QOS:         cfg.RABBITMQ_QOS,
+			CLUSTER:     cfg.RABBITMQ_CLUSTER,
 		},
-		SMTP: sdk_opt.Smtp{
+		SMTP: sdk_dro.Smtp{
 			HOST:     cfg.SMTP_HOST,
 			PORT:     cfg.SMTP_PORT,
 			USERNAME: cfg.SMTP_USERNAME,

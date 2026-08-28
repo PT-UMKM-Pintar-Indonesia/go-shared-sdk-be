@@ -3,8 +3,6 @@ package sdk_con
 import (
 	"context"
 	"errors"
-	"os"
-	"strings"
 	"time"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -83,28 +81,15 @@ func newRedisClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
 }
 
 func newRedisSentinelClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
-	options, err := redis.ParseURL(opt.Addr)
-	if err != nil {
-		return nil, err
-	}
+	transform := sdk_helper.NewTransform()
 
-	addrs := strings.Split(os.Getenv("REDIS_QSN_CLUSTER"), ",")
-	for i := range addrs {
-		addrs[i] = strings.TrimSpace(addrs[i])
-	}
-
-	if len(addrs) == 0 || addrs[0] == sdk_cons.EMPTY {
-		return nil, errors.New("REDIS_QSN_CLUSTER is empty")
-	}
-
-	masterName := os.Getenv("REDIS_MASTER_NAME_CLUSTER")
-	if masterName == sdk_cons.EMPTY {
-		masterName = "rdsmaster"
-	}
-
-	sentinelPassword := os.Getenv("REDIS_PASSWORD_CLUSTER")
-	if sentinelPassword == sdk_cons.EMPTY {
-		sentinelPassword = options.Password
+	options := &redis.FailoverOptions{
+		MasterName:       opt.MasterName,
+		SentinelAddrs:    opt.SentinelAddrs,
+		Username:         opt.Username,
+		Password:         opt.Password,
+		SentinelUsername: opt.SentinelUsername,
+		SentinelPassword: opt.SentinelPassword,
 	}
 
 	if opt.PoolSize < 1 {
@@ -155,24 +140,11 @@ func newRedisSentinelClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, err
 		options.ConnMaxLifetime = 30 * time.Minute
 	}
 
-	transform := sdk_helper.NewTransform()
-
-	if err := transform.SrcToDest(opt, options); err != nil {
+	if err := transform.SrcToDest(options, opt); err != nil {
 		return nil, err
 	}
 
-	failoverOpts := &redis.FailoverOptions{
-		MasterName:       masterName,
-		SentinelAddrs:    addrs,
-		Password:         options.Password,
-		SentinelPassword: sentinelPassword,
-	}
-
-	if err := transform.SrcToDest(failoverOpts, options); err != nil {
-		return nil, err
-	}
-
-	client := redis.NewFailoverClient(failoverOpts)
+	client := redis.NewFailoverClient(options)
 
 	if err := ping(client, opt.Ctx); err != nil {
 		return nil, err
