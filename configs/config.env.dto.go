@@ -69,8 +69,8 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_dro.Environment {
 			PASSWORD:         cfg.REDIS_PASSWORD,
 			DB:               cfg.REDIS_DB,
 			CLUSTER:          cfg.REDIS_CLUSTER,
-			CLUSTER_NAME:     cfg.REDIS_NAME_CLUSTER,
-			CLUSTER_PASSWORD: cfg.REDIS_PASSWORD_CLUSTER,
+			NAME_CLUSTER:     cfg.REDIS_NAME_CLUSTER,
+			PASSWORD_CLUSTER: cfg.REDIS_PASSWORD_CLUSTER,
 		},
 		POSTGRES: sdk_dro.Postgres{
 			URL:      cfg.PG_DSN,

@@ -54,8 +54,8 @@ type Config struct {
 	RABBITMQ_SECRET_KEY  string `env:"RABBITMQ_SECRET_KEY" mapstructure:"RABBITMQ_SECRET_KEY"`
 	RABBITMQ_CONCURRENCY int    `env:"RABBITMQ_CONCURRENCY" mapstructure:"RABBITMQ_CONCURRENCY"`
 	RABBITMQ_QOS         int    `env:"RABBITMQ_QOS" mapstructure:"RABBITMQ_QOS"`
-	RABBITMQ_QSN_CLUSTER string `env:"RABBITMQ_QSN_CLUSTER" mapstructure:"RABBITMQ_QSN_CLUSTER"`
 	RABBITMQ_CLUSTER     bool   `env:"RABBITMQ_CLUSTER" mapstructure:"RABBITMQ_CLUSTER"`
+	RABBITMQ_QSN_CLUSTER string `env:"RABBITMQ_QSN_CLUSTER" mapstructure:"RABBITMQ_QSN_CLUSTER"`
 
 	SMTP_HOST     string `env:"SMTP_HOST" mapstructure:"SMTP_HOST"`
 	SMTP_PORT     int    `env:"SMTP_PORT" mapstructure:"SMTP_PORT"`

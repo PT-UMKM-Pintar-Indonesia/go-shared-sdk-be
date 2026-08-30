@@ -17,8 +17,9 @@ type (
 		PASSWORD         string
 		DB               string
 		CLUSTER          bool
-		CLUSTER_NAME     string
-		CLUSTER_PASSWORD string
+		CSN_CLUSTER      string
+		NAME_CLUSTER     string
+		PASSWORD_CLUSTER string
 	}
 
 	Postgres struct {
@@ -67,6 +68,7 @@ type (
 		CONCURRENCY int
 		QOS         int
 		CLUSTER     bool
+		QSN_CLUSTER string
 	}
 
 	Smtp struct {
