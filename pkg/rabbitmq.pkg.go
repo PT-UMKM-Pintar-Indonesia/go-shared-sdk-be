@@ -65,15 +65,7 @@ type (
 func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Conn, error) {
 	instanceID := shortuuid.New()
 
-	var con *amqp.Conn
-	var err error
-
-	if opt.Cluster {
-		con, err = sdk_con.RabbitConnectionCluster(opt)
-	} else {
-		con, err = sdk_con.RabbitConnection(opt)
-	}
-
+	con, err := sdk_con.RabbitMQConnection(opt)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -12,8 +12,6 @@ import (
 
 type (
 	RedisClientOptions struct {
-		Ctx                          context.Context
-		Cluster                      bool
 		Network                      string
 		Addr                         string
 		ClientName                   string

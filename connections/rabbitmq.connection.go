@@ -20,7 +20,7 @@ const (
 	DefaultKeepAlive  = 30
 )
 
-func RabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+func rabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
 	if opt.Url == sdk_cons.EMPTY {
 		return nil, errors.New("rabbitmq url is required")
 	}
@@ -66,7 +66,7 @@ func RabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) 
 	)
 }
 
-func RabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+func rabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
 	if len(opt.Urls) < 1 {
 		return nil, errors.New("rabbitmq urls is required")
 	}
@@ -110,4 +110,12 @@ func RabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, 
 			},
 		}),
 	)
+}
+
+func RabbitMQConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+	if len(opt.Urls) > 0 {
+		return rabbitConnectionCluster(opt)
+	}
+
+	return rabbitConnection(opt)
 }
