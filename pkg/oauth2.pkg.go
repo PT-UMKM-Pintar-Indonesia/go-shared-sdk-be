@@ -1,4 +1,4 @@
-package pkg
+package sdk_pkg
 
 import (
 	"net/http"
@@ -19,18 +19,18 @@ import (
 type oauth2 struct{}
 
 func NewOauth2() sdk_inf.IOauth2 {
-	return oauth2{}
+	return &oauth2{}
 }
 
-func (p oauth2) Manager() *manage.Manager {
+func (p *oauth2) Manager() *manage.Manager {
 	return manage.NewDefaultManager()
 }
 
-func (p oauth2) Client() *store.ClientStore {
+func (p *oauth2) Client() *store.ClientStore {
 	return store.NewClientStore()
 }
 
-func (p oauth2) Server(manager *manage.Manager) *server.Server {
+func (p *oauth2) Server(manager *manage.Manager) *server.Server {
 	srv := server.NewDefaultServer(manager)
 
 	srv.SetAllowGetAccessRequest(true)
@@ -42,7 +42,7 @@ func (p oauth2) Server(manager *manage.Manager) *server.Server {
 	return srv
 }
 
-func (p oauth2) GenerateClientCredentials(req sdk_dto.GenerateClientCredentialsOptions) (goauth2.TokenInfo, error) {
+func (p *oauth2) GenerateClientCredentials(req *sdk_dto.GenerateClientCredentialsOptions) (goauth2.TokenInfo, error) {
 	manager := req.Manager
 	client := req.ClientStore
 
@@ -65,7 +65,7 @@ func (p oauth2) GenerateClientCredentials(req sdk_dto.GenerateClientCredentialsO
 	})
 }
 
-func (p oauth2) GenerateServerClientCredentials(req sdk_dto.GenerateServerClientCredentialsOptions) (goauth2.TokenInfo, *server.Server, error) {
+func (p *oauth2) GenerateServerClientCredentials(req *sdk_dto.GenerateServerClientCredentialsOptions) (goauth2.TokenInfo, *server.Server, error) {
 	manager := req.Manager
 	client := req.ClientStore
 
@@ -114,7 +114,7 @@ func (p oauth2) GenerateServerClientCredentials(req sdk_dto.GenerateServerClient
 	return tokenInfo, srv, nil
 }
 
-func (p oauth2) LoadAccessToken(req sdk_dto.LoadAccessTokenOptions) (goauth2.TokenInfo, error) {
+func (p *oauth2) LoadAccessToken(req *sdk_dto.LoadAccessTokenOptions) (goauth2.TokenInfo, error) {
 	server := req.Server
 	return server.Manager.LoadAccessToken(req.Ctx, req.Token)
 }

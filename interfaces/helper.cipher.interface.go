@@ -1,10 +1,12 @@
 package sdk_inf
 
 type ICipher interface {
-	AES256Encrypt(secretKey, plainText string) (string, error)
-	AES256Decrypt(secretKey string, cipherText string) (string, error)
-	HMACSHA512Sign(secretKey, data string) (string, error)
-	HMACSHA512Verify(secretKey, data, hash string) bool
-	SHA256Sign(plainText string) (string, error)
-	SHA512Sign(plainText string) (string, error)
+	Base64Encode(plainText string) string
+	Base64Decode(cipherText string) string
+	EncodeRotation(plainText string) string
+	DecodeRotation(cipherText string) string
+	CaesarEncrypt(plainText string, rotation int) string
+	CaesarDecrypt(cipherText string, rotation int) string
+	RotateNumber(plainNumber string, shift int) string
+	DerotateNumber(cipherNumber string, shift int) string
 }

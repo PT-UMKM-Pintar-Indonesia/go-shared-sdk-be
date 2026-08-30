@@ -1,277 +1,264 @@
-package pkg
+package sdk_pkg
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	goredis "github.com/redis/go-redis/v9"
-
+	sdk_con "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/connections"
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 type redis struct {
 	redis *goredis.Client
-	ctx   context.Context
 }
 
-func NewRedis(ctx context.Context, con *goredis.Client) (sdk_inf.IRedis, error) {
-	return &redis{redis: con, ctx: ctx}, nil
+func NewRedis(opt *sdk_dto.RedisClientOptions) (sdk_inf.IRedis, *goredis.Client, error) {
+	con, err := sdk_con.RedisConnection(opt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &redis{redis: con}, con, nil
 }
 
-func (p redis) Set(key string, value any) error {
-	cmd := p.redis.Set(p.ctx, key, value, 0)
+func (p *redis) Client(ctx context.Context) *goredis.Client {
+	return p.redis
+}
 
-	if err := cmd.Err(); err != nil {
+func (p *redis) Set(ctx context.Context, key string, value any) error {
+	if err := p.redis.Set(ctx, key, value, 0).Err(); err != nil {
+		return fmt.Errorf("redis set failed for key %s: %w", key, err)
+	}
+	return nil
+}
+
+func (p *redis) SetEx(ctx context.Context, key string, expiration time.Duration, value any) error {
+	if err := p.redis.SetEx(ctx, key, value, expiration).Err(); err != nil {
+		return fmt.Errorf("redis setex failed for key %s: %w", key, err)
+	}
+	return nil
+}
+
+func (p *redis) SetNX(ctx context.Context, key string, expiration time.Duration, value any) error {
+	if err := p.redis.SetNX(ctx, key, value, expiration).Err(); err != nil {
+		return fmt.Errorf("redis setnx failed for key %s: %w", key, err)
+	}
+	return nil
+}
+
+func (p *redis) Get(ctx context.Context, key string) ([]byte, error) {
+	val, err := p.redis.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("redis get failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
+
+func (p *redis) Del(ctx context.Context, key string) (int64, error) {
+	val, err := p.redis.Del(ctx, key).Result()
+	if err != nil {
+		return 0, fmt.Errorf("redis del failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
+
+func (p *redis) Exists(ctx context.Context, key string) (int64, error) {
+	val, err := p.redis.Exists(ctx, key).Result()
+	if err != nil {
+		return 0, fmt.Errorf("redis exists failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
+
+func (p *redis) MSet(ctx context.Context, values ...any) (string, error) {
+	val, err := p.redis.MSet(ctx, values...).Result()
+	if err != nil {
+		return sdk_cons.EMPTY, fmt.Errorf("redis mset failed: %w", err)
+	}
+	return val, nil
+}
+
+func (p *redis) MSetNX(ctx context.Context, values ...any) (bool, error) {
+	val, err := p.redis.MSetNX(ctx, values...).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis msetnx failed: %w", err)
+	}
+	return val, nil
+}
+
+func (p *redis) MGet(ctx context.Context, key string) ([]any, error) {
+	val, err := p.redis.MGet(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis mget failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
+
+func (p *redis) HSet(ctx context.Context, key string, values ...any) error {
+	if err := p.redis.HSet(ctx, key, values...).Err(); err != nil {
+		return fmt.Errorf("redis hset failed for key %s: %w", key, err)
+	}
+	return nil
+}
+
+func (p *redis) HSetEx(ctx context.Context, key string, expiration time.Duration, values ...any) error {
+	if len(values) < 1 {
+		return errors.New("Invalid field and values")
+	}
+
+	if err := p.HSet(ctx, key, values); err != nil {
 		return err
+	}
+
+	if err := p.redis.HExpire(ctx, key, expiration, values[0].(string)); err.Err() != nil {
+		return err.Err()
 	}
 
 	return nil
 }
 
-func (p redis) SetEx(key string, expiration time.Duration, value any) error {
-	cmd := p.redis.SetEx(p.ctx, key, value, expiration)
-
-	if err := cmd.Err(); err != nil {
-		return err
+func (p *redis) HSetNX(ctx context.Context, key string, field string, value any) error {
+	if err := p.redis.HSetNX(ctx, key, field, value); err.Err() != nil {
+		return err.Err()
 	}
 
 	return nil
 }
 
-func (p redis) Get(key string) ([]byte, error) {
-	cmd := p.redis.Get(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return nil, err
+func (p *redis) HGet(ctx context.Context, key, field string) ([]byte, error) {
+	val, err := p.redis.HGet(ctx, key, field).Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("redis hget failed for key %s field %s: %w", key, field, err)
 	}
-
-	res := cmd.Val()
-	return []byte(res), nil
+	return val, nil
 }
 
-func (p redis) Del(key string) (int64, error) {
-	cmd := p.redis.Del(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return 0, err
+func (p *redis) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	val, err := p.redis.HGetAll(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis hgetall failed for key %s: %w", key, err)
 	}
-
-	return cmd.Val(), nil
+	return val, nil
 }
 
-func (p redis) Exists(key string) (int64, error) {
-	cmd := p.redis.Exists(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return 0, err
+func (p *redis) HExists(ctx context.Context, key, field string) (bool, error) {
+	val, err := p.redis.HExists(ctx, key, field).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis hexists failed for key %s field %s: %w", key, field, err)
 	}
-
-	return cmd.Val(), nil
+	return val, nil
 }
 
-func (p redis) MSet(values ...any) (string, error) {
-	cmd := p.redis.MSet(p.ctx, values...)
+func (p *redis) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
+	val, err := p.redis.HDel(ctx, key, fields...).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis hdel failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
 
-	if err := cmd.Err(); err != nil {
-		return sdk_cons.EMPTY, err
+func (p *redis) HIncrByFloat(ctx context.Context, key, field string, incr float64) (float64, error) {
+	val, err := p.redis.HIncrByFloat(ctx, key, field, incr).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis hincrbyfloat failed for key %s: %w", key, err)
+	}
+	return val, nil
+}
+
+func (p *redis) LPush(ctx context.Context, key string, values ...any) ([]string, error) {
+	length, err := p.redis.LPush(ctx, key, values).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis lpush failed for key %s: %w", key, err)
 	}
 
-	res := cmd.Val()
+	res, err := p.redis.LRange(ctx, key, 0, length-1).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis lrange failed for key %s: %w", key, err)
+	}
 	return res, nil
 }
 
-func (p redis) MSetNX(values ...any) (bool, error) {
-	cmd := p.redis.MSetNX(p.ctx, values...)
-
-	if err := cmd.Err(); err != nil {
-		return sdk_cons.FALSE, err
+func (p *redis) SAdd(ctx context.Context, key string, members ...any) (int64, error) {
+	val, err := p.redis.SAdd(ctx, key, members...).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis sadd failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return val, nil
 }
 
-func (p redis) MGet(key string) ([]any, error) {
-	cmd := p.redis.MGet(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return nil, err
+func (p *redis) SIsMember(ctx context.Context, key string, member any) (bool, error) {
+	val, err := p.redis.SIsMember(ctx, key, member).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis sismember failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return val, nil
 }
 
-func (p redis) HSet(key string, values ...any) error {
-	cmd := p.redis.HSet(p.ctx, key, values...)
-
-	if err := cmd.Err(); err != nil {
-		return err
+func (p *redis) SRem(ctx context.Context, key string, member any) (int64, error) {
+	val, err := p.redis.SRem(ctx, key, member).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis srem failed for key %s: %w", key, err)
 	}
-
-	return nil
+	return val, nil
 }
 
-func (p redis) HSetEx(key string, expiration time.Duration, values ...any) error {
-	cmd := p.redis.HSet(p.ctx, key, values)
-	p.redis.Expire(p.ctx, key, expiration)
-
-	if err := cmd.Err(); err != nil {
-		return err
+func (p *redis) SMembers(ctx context.Context, key string) ([]string, error) {
+	val, err := p.redis.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis smembers failed for key %s: %w", key, err)
 	}
-
-	return nil
+	return val, nil
 }
 
-func (p redis) HGet(key, field string) ([]byte, error) {
-	cmd := p.redis.HGet(p.ctx, key, field)
-
-	if err := cmd.Err(); err != nil {
-		return nil, err
+func (p *redis) ZAdd(ctx context.Context, key string, members ...goredis.Z) (int64, error) {
+	val, err := p.redis.ZAdd(ctx, key, members...).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis zadd failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return []byte(res), nil
+	return val, nil
 }
 
-func (p redis) HGetAll(key string) (map[string]string, error) {
-	cmd := p.redis.HGetAll(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return nil, err
+func (p *redis) ZRange(ctx context.Context, key string) ([]string, error) {
+	val, err := p.redis.ZRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis zrange failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return val, nil
 }
 
-func (p redis) HExists(key, field string) (bool, error) {
-	cmd := p.redis.HExists(p.ctx, key, field)
-
-	if err := cmd.Err(); err != nil {
-		return false, err
+func (p *redis) IncrBy(ctx context.Context, key string, value int) (int, error) {
+	val, err := p.redis.IncrBy(ctx, key, int64(value)).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis incrby failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return int(val), nil
 }
 
-func (p redis) HDel(key string, fields ...string) (int64, error) {
-	cmd := p.redis.HDel(p.ctx, key, fields...)
-
-	if err := cmd.Err(); err != nil {
-		return -1, err
+func (p *redis) TTL(ctx context.Context, key string) (int, error) {
+	val, err := p.redis.TTL(ctx, key).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis ttl failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return int(val.Seconds()), nil
 }
 
-func (p redis) HIncrByFloat(key, field string, incr float64) (float64, error) {
-	cmd := p.redis.HIncrByFloat(p.ctx, key, field, incr)
-
-	if err := cmd.Err(); err != nil {
-		return -1, err
+func (p *redis) Unlink(ctx context.Context, key string) (int64, error) {
+	val, err := p.redis.Unlink(ctx, key).Result()
+	if err != nil {
+		return -1, fmt.Errorf("redis unlink failed for key %s: %w", key, err)
 	}
-
-	res := cmd.Val()
-	return res, nil
+	return val, nil
 }
 
-func (p redis) LPush(key string, values ...any) ([]string, error) {
-	cmd := p.redis.LPush(p.ctx, key, values)
-	if err := cmd.Err(); err != nil {
-		return nil, err
+func (p *redis) Expire(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+	val, err := p.redis.Expire(ctx, key, expiration).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis expire failed for key %s: %w", key, err)
 	}
-
-	cmdl := p.redis.LRange(p.ctx, key, 0, cmd.Val())
-	if err := cmdl.Err(); err != nil {
-		return nil, err
-	}
-
-	res := cmdl.Val()
-	return res, nil
-}
-
-func (p redis) SAdd(key string, members ...any) (int64, error) {
-	cmd := p.redis.SAdd(p.ctx, key, members...)
-	if err := cmd.Err(); err != nil {
-		return -1, err
-	}
-
-	res := cmd.Val()
-	return res, nil
-}
-
-func (p redis) SIsMember(key string, member any) (bool, error) {
-	cmdl := p.redis.SIsMember(p.ctx, key, member)
-	if err := cmdl.Err(); err != nil {
-		return false, err
-	}
-
-	res := cmdl.Val()
-	return res, nil
-}
-
-func (p redis) SRem(key string, member any) (int64, error) {
-	cmdl := p.redis.SRem(p.ctx, key, member)
-	if err := cmdl.Err(); err != nil {
-		return -1, err
-	}
-
-	res := cmdl.Val()
-	return res, nil
-}
-
-func (p redis) SMembers(key string) ([]string, error) {
-	cmdl := p.redis.SMembers(p.ctx, key)
-	if err := cmdl.Err(); err != nil {
-		return nil, err
-	}
-
-	res := cmdl.Val()
-	return res, nil
-}
-
-func (p redis) ZAdd(key string, members ...goredis.Z) (int64, error) {
-	cmd := p.redis.ZAdd(p.ctx, key)
-	if err := cmd.Err(); err != nil {
-		return -1, err
-	}
-
-	res := cmd.Val()
-	return res, nil
-}
-
-func (p redis) ZRange(key string) ([]string, error) {
-	cmdl := p.redis.ZRange(p.ctx, key, 0, -1)
-	if err := cmdl.Err(); err != nil {
-		return nil, err
-	}
-
-	res := cmdl.Val()
-	return res, nil
-}
-
-func (p redis) IncrBy(key string, value int) (int, error) {
-	cmd := p.redis.IncrBy(p.ctx, key, int64(value))
-
-	if err := cmd.Err(); err != nil {
-		return -1, err
-	}
-
-	res := cmd.Val()
-	return int(res), nil
-}
-
-func (p redis) TTL(key string) (int, error) {
-	cmd := p.redis.TTL(p.ctx, key)
-
-	if err := cmd.Err(); err != nil {
-		return -1, err
-	}
-
-	res := cmd.Val()
-	return int(res.Seconds()), nil
+	return val, nil
 }

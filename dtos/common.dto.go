@@ -12,7 +12,7 @@ import (
 type (
 	ServiceOptions struct {
 		CTX    context.Context
-		ENV    Request[Environtment]
+		ENV    Request[Environment]
 		ENVB   any
 		DB     *bun.DB
 		RDS    *redis.Client
@@ -26,7 +26,7 @@ type (
 
 	ControllerOptions[T any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment]
+		ENV     Request[Environment]
 		ENVB    any
 		DB      *bun.DB
 		RDS     *redis.Client
@@ -37,7 +37,7 @@ type (
 
 	RouteOptions[T any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment]
+		ENV        Request[Environment]
 		ENVB       any
 		DB         *bun.DB
 		RDS        *redis.Client
@@ -48,7 +48,7 @@ type (
 
 	SchedulerOptions struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environment]
 		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client
@@ -57,7 +57,7 @@ type (
 
 	WorkerOptions struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environment]
 		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client
@@ -66,7 +66,7 @@ type (
 
 	CallbackOptions[T any] struct {
 		CTX        context.Context
-		ENV        Request[Environtment]
+		ENV        Request[Environment]
 		ENVB       any
 		DB         *bun.DB
 		RDS        *redis.Client
@@ -77,7 +77,7 @@ type (
 
 	EventOptions[T any] struct {
 		CTX     context.Context
-		ENV     Request[Environtment]
+		ENV     Request[Environment]
 		ENVB    any
 		DB      *bun.DB
 		RDS     *redis.Client
@@ -87,7 +87,7 @@ type (
 
 	ModuleOptions struct {
 		CTX    context.Context
-		ENV    Request[Environtment]
+		ENV    Request[Environment]
 		ENVB   any
 		DB     *bun.DB
 		RDS    *redis.Client
@@ -97,7 +97,7 @@ type (
 
 	HelperOptions struct {
 		CTX  context.Context
-		ENV  Request[Environtment]
+		ENV  Request[Environment]
 		ENVB any
 		DB   *bun.DB
 		RDS  *redis.Client

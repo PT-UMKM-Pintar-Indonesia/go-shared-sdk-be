@@ -3,10 +3,11 @@ package sdk_inf
 import (
 	"crypto/rsa"
 
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
+
+	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 type IJose interface {
@@ -15,5 +16,5 @@ type IJose interface {
 	ImportJsonWebKey(jwkKey jwk.Key) (*sdk_opt.JwkMetadata, error)
 	ExportJsonWebKey(privateKey *rsa.PrivateKey) (*sdk_opt.JwkMetadata, error)
 	JwtSign(options *sdk_dto.JwtSignOption) ([]byte, error)
-	JwtVerify(prefix string, token string, redis IRedis) (*jwt.Token, error)
+	JwtVerify(prefix string, token string, redis IRedis) (jwt.Token, error)
 }

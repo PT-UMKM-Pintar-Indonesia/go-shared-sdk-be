@@ -1,4 +1,4 @@
-package pkg
+package sdk_pkg
 
 import (
 	"os"
@@ -79,104 +79,105 @@ func Logrus(Type string, Msg any, Args ...any) {
 	}
 }
 
-func LogrusCustomLogger(req sdk_dto.Request[sdk_dto.LogrusCustomLogger]) ([]byte, error) {
+func LogrusCustomLogger(req *sdk_dto.LogrusCustomLogger) ([]byte, error) {
 	logger := logrus.New()
 
-	if req.Option.FileName != sdk_cons.EMPTY {
-		file, err := os.OpenFile(req.Option.FileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if req.FileName != sdk_cons.EMPTY {
+		file, err := os.OpenFile(req.FileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			return nil, err
 		}
+		defer file.Close()
 
-		if req.Option.FileFormatter == nil {
-			req.Option.FileFormatter = &logrus.JSONFormatter{
+		if req.FileFormatter == nil {
+			req.FileFormatter = &logrus.JSONFormatter{
 				TimestampFormat: sdk_cons.DATE_TIME_FORMAT,
 			}
 		}
 
 		logger.SetOutput(file)
-		logger.SetFormatter(req.Option.FileFormatter)
+		logger.SetFormatter(req.FileFormatter)
 	}
 
-	lg := logger.WithFields(req.Option.Fields)
+	lg := logger.WithFields(req.Fields)
 
-	if req.Option.CustomFields != nil {
+	if req.CustomFields != nil {
 		fields := logrus.Fields{}
 
-		if err := sdk_helper.NewTransform().SrcToDest(req.Option.CustomFields, &fields); err != nil {
+		if err := sdk_helper.NewTransform().SrcToDest(req.CustomFields, &fields); err != nil {
 			return nil, err
 		}
 
 		lg = logger.WithFields(fields)
 	}
 
-	switch req.Option.Type {
+	switch req.Type {
 
 	case sdk_cons.WARN:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Warnf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Warnf(req.CustomMessage, req.Args)
 		} else {
-			lg.Warn(req.Option.Args)
+			lg.Warn(req.Args)
 		}
 
 	case sdk_cons.TRACE:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Tracef(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Tracef(req.CustomMessage, req.Args)
 		} else {
-			lg.Trace(req.Option.Args)
+			lg.Trace(req.Args)
 		}
 
 	case sdk_cons.DEBUG:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Debugf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Debugf(req.CustomMessage, req.Args)
 		} else {
-			lg.Debug(req.Option.Args)
+			lg.Debug(req.Args)
 		}
 
 	case sdk_cons.ERROR:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Errorf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Errorf(req.CustomMessage, req.Args)
 		} else {
-			lg.Error(req.Option.Args)
+			lg.Error(req.Args)
 		}
 
 	case sdk_cons.INFO:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Infof(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Infof(req.CustomMessage, req.Args)
 		} else {
-			lg.Info(req.Option.Args)
+			lg.Info(req.Args)
 		}
 
 	case sdk_cons.PANIC:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Panicf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Panicf(req.CustomMessage, req.Args)
 		} else {
-			lg.Panic(req.Option.Args)
+			lg.Panic(req.Args)
 		}
 
 	case sdk_cons.FATAL:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Fatalf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Fatalf(req.CustomMessage, req.Args)
 		} else {
-			lg.Fatal(req.Option.Args)
+			lg.Fatal(req.Args)
 		}
 
 	default:
-		if req.Option.CustomMessage != sdk_cons.EMPTY && req.Option.Args != nil {
-			lg.Printf(req.Body.CustomMessage, req.Option.Args)
+		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
+			lg.Printf(req.CustomMessage, req.Args)
 		} else {
-			lg.Println(req.Option.Args)
+			lg.Println(req.Args)
 		}
 	}
 
-	if req.Option.Entry == nil {
-		req.Option.Entry = lg.WithTime(time.Now())
+	if req.Entry == nil {
+		req.Entry = lg.WithTime(time.Now())
 	}
 
-	if req.Option.TextFormatter != nil {
-		return req.Option.TextFormatter.Format(req.Option.Entry)
-	} else if req.Option.JSONFormatter != nil {
-		return req.Option.JSONFormatter.Format(req.Option.Entry)
+	if req.TextFormatter != nil {
+		return req.TextFormatter.Format(req.Entry)
+	} else if req.JSONFormatter != nil {
+		return req.JSONFormatter.Format(req.Entry)
 	}
 
 	return nil, nil

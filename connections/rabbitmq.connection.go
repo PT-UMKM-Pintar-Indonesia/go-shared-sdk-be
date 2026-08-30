@@ -2,24 +2,112 @@ package sdk_con
 
 import (
 	"crypto/tls"
+	"errors"
+	"net"
 	"time"
 
 	"github.com/wagslane/go-rabbitmq"
 
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 )
 
-func RabbitConnection(req sdk_dto.Request[sdk_dto.Environtment]) (*rabbitmq.Conn, error) {
-	interval := time.Duration(time.Second * 30)
+const (
+	DefaultFrameSize  = 131072
+	DefaultChannelMax = 5000
+	DefaultHeartbeat  = 10
+	DefaultTimeout    = 10
+	DefaultKeepAlive  = 30
+)
 
-	return rabbitmq.NewConn(req.Config.RABBITMQ.URL,
+func RabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+	if opt.Url == sdk_cons.EMPTY {
+		return nil, errors.New("rabbitmq url is required")
+	}
+
+	if opt.ChannelMax < 1 {
+		opt.ChannelMax = DefaultChannelMax
+	}
+
+	if opt.FrameSize < 1 {
+		opt.FrameSize = DefaultFrameSize
+	}
+
+	if opt.Heartbeat < 1 {
+		opt.Heartbeat = DefaultHeartbeat
+	}
+
+	if opt.Timeout < 1 {
+		opt.Timeout = DefaultTimeout
+	}
+
+	if opt.KeepAlive < 1 {
+		opt.KeepAlive = DefaultKeepAlive
+	}
+
+	dialer := &net.Dialer{
+		Timeout:   time.Duration(opt.Timeout) * time.Second,
+		KeepAlive: time.Duration(opt.KeepAlive) * time.Second,
+	}
+
+	return rabbitmq.NewConn(opt.Url,
 		rabbitmq.WithConnectionOptionsLogging,
-		rabbitmq.WithConnectionOptionsReconnectInterval(interval),
+		rabbitmq.WithConnectionOptionsReconnectInterval(5*time.Second),
 		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
-			Vhost:           req.Config.RABBITMQ.VSN,
-			FrameSize:       2147483648,
-			ChannelMax:      16384,
-			Heartbeat:       interval,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}))
+			Dial:       dialer.Dial,
+			Vhost:      opt.Vhost,
+			Heartbeat:  time.Duration(opt.Heartbeat) * time.Second,
+			FrameSize:  opt.FrameSize,
+			ChannelMax: opt.ChannelMax,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: opt.Secure,
+			},
+		}),
+	)
+}
+
+func RabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+	if len(opt.Urls) < 1 {
+		return nil, errors.New("rabbitmq urls is required")
+	}
+
+	if opt.ChannelMax < 1 {
+		opt.ChannelMax = DefaultChannelMax
+	}
+
+	if opt.FrameSize < 1 {
+		opt.FrameSize = DefaultFrameSize
+	}
+
+	if opt.Heartbeat < 1 {
+		opt.Heartbeat = DefaultHeartbeat
+	}
+
+	if opt.Timeout < 1 {
+		opt.Timeout = DefaultTimeout
+	}
+
+	if opt.KeepAlive < 1 {
+		opt.KeepAlive = DefaultKeepAlive
+	}
+
+	dialer := &net.Dialer{
+		Timeout:   time.Duration(opt.Timeout) * time.Second,
+		KeepAlive: time.Duration(opt.KeepAlive) * time.Second,
+	}
+
+	return rabbitmq.NewClusterConn(rabbitmq.NewStaticResolver(opt.Urls, opt.Shuffle),
+		rabbitmq.WithConnectionOptionsLogging,
+		rabbitmq.WithConnectionOptionsReconnectInterval(5*time.Second),
+		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
+			Dial:       dialer.Dial,
+			Vhost:      opt.Vhost,
+			Heartbeat:  time.Duration(opt.Heartbeat) * time.Second,
+			FrameSize:  opt.FrameSize,
+			ChannelMax: opt.ChannelMax,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: opt.Secure,
+			},
+		}),
+	)
 }

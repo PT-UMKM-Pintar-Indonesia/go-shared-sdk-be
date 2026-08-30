@@ -15,8 +15,8 @@ type IParser interface {
 	Unmarshal(src []byte, dest any) error
 	Decode(src io.Reader, dest any) error
 	Encode(src io.Writer, dest any) error
-	FromUUID(s string) uuid.UUID
-	FromNullUUID(s string) uuid.NullUUID
+	FromUUID(s string) (uuid.UUID, error)
+	FromNullUUID(s string) (uuid.NullUUID, error)
 	DecimalToFloat(n int64) float64
 	HtmlFileToStr(filename string, data any) (string, error)
 }

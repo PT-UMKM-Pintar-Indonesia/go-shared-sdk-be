@@ -2,141 +2,165 @@ package sdk_helper
 
 import (
 	"crypto/aes"
-	cpr "crypto/cipher"
+	c "crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"slices"
+
+	"golang.org/x/crypto/scrypt"
 
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	"golang.org/x/crypto/scrypt"
 )
 
-type crypto struct{}
+const (
+	scryptN   = 16384
+	scryptR   = 8
+	scryptP   = 1
+	keyLen    = 32
+	saltLen   = 16
+	minKeyLen = 16
+)
+
+type cryptoHelper struct{}
 
 func NewCrypto() sdk_inf.ICrypto {
-	return crypto{}
+	return &cryptoHelper{}
 }
 
-func (h crypto) AES256Encrypt(secretKey, plainText string) (string, error) {
-	secretKeyByte := make([]byte, len(secretKey))
-	secretKeyByte = []byte(secretKey)
-
-	plainTextByte := make([]byte, len(plainText))
-	plainTextByte = []byte(plainText)
-
-	tagSize := 16
-
-	if len(secretKeyByte) < 32 {
-		return "", errors.New("Secretkey length mismatch")
-	}
-
-	key, err := scrypt.Key([]byte(secretKey), []byte("salt"), 1024, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cpr.NewGCMWithTagSize(block, tagSize)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonceSize); err != nil {
-		return "", err
-	}
-
-	cipherText := gcm.Seal(nonceSize, nonceSize, []byte(plainTextByte), nil)
-
-	return hex.EncodeToString(cipherText), nil
+func (h *cryptoHelper) deriveKey(secret, salt []byte) ([]byte, error) {
+	return scrypt.Key(secret, salt, scryptN, scryptR, scryptP, keyLen)
 }
 
-func (h crypto) AES256Decrypt(secretKey string, cipherText string) (string, error) {
-	secretKeyByte := make([]byte, len(secretKey))
-	secretKeyByte = []byte(secretKey)
-	tagSize := 16
-
-	if len(secretKeyByte) < 32 {
-		return "", errors.New("Secretkey length mismatch")
+func (h *cryptoHelper) AES256Encrypt(secretKey, plainText string) (string, error) {
+	if len(secretKey) < minKeyLen {
+		return "", fmt.Errorf("security error: secret key too short (min %d)", minKeyLen)
 	}
 
-	key, err := scrypt.Key(secretKeyByte, []byte("salt"), 1024, 8, 1, 32)
+	salt, err := h.GenerateRandomBytes(saltLen)
 	if err != nil {
 		return "", err
 	}
 
-	cipherTextByte, err := hex.DecodeString(cipherText)
+	key, err := h.deriveKey([]byte(secretKey), salt)
+	if err != nil {
+		return "", fmt.Errorf("kdf failed: %w", err)
+	}
+
+	block, _ := aes.NewCipher(key)
+	gcm, _ := c.NewGCM(block)
+
+	nonce, err := h.GenerateRandomBytes(gcm.NonceSize())
 	if err != nil {
 		return "", err
 	}
 
-	block, err := aes.NewCipher(key)
+	sealed := gcm.Seal(nonce, nonce, []byte(plainText), nil)
+	result := slices.Concat(salt, sealed)
+
+	return hex.EncodeToString(result), nil
+}
+
+func (h *cryptoHelper) AES256Decrypt(secretKey, cipherTextHex string) (string, error) {
+	data, err := hex.DecodeString(cipherTextHex)
+	if err != nil || len(data) < saltLen+12 { // 16 (salt) + 12 (nonce)
+		return "", errors.New("invalid ciphertext format")
+	}
+
+	salt, encryptedPayload := data[:saltLen], data[saltLen:]
+	key, err := h.deriveKey([]byte(secretKey), salt)
 	if err != nil {
 		return "", err
 	}
 
-	gcm, err := cpr.NewGCMWithTagSize(block, tagSize)
-	if err != nil {
-		return "", err
+	block, _ := aes.NewCipher(key)
+	gcm, _ := c.NewGCM(block)
+
+	nonceSize := gcm.NonceSize()
+	if len(encryptedPayload) < nonceSize {
+		return "", errors.New("malformed nonce")
 	}
 
-	nonceSize := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonceSize); err != nil {
-		return "", err
-	} else if len(cipherTextByte) < len(nonceSize) {
-		return "", errors.New("Cipher text to short")
-	}
-
-	nonce, ciphertext := cipherTextByte[:len(nonceSize)], cipherTextByte[len(nonceSize):]
-	plaintext, err := gcm.Open(nil, []byte(nonce), []byte(ciphertext), nil)
+	nonce, ciphertext := encryptedPayload[:nonceSize], encryptedPayload[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("decryption failed: %w", err)
 	}
 
 	return string(plaintext), nil
 }
 
-func (h crypto) HMACSHA512Sign(secretKey, data string) (string, error) {
-	hashHMAC512 := hmac.New(sha512.New, []byte(secretKey))
+func (h *cryptoHelper) AES256EncryptWithSalt(secretKey, plainText, saltHex string) (string, error) {
+	salt, err := hex.DecodeString(saltHex)
+	if err != nil {
+		return "", errors.New("invalid salt hex")
+	}
 
-	if _, err := hashHMAC512.Write([]byte(data)); err != nil {
+	key, err := h.deriveKey([]byte(secretKey), salt)
+	if err != nil {
 		return "", err
 	}
 
-	return hex.EncodeToString(hashHMAC512.Sum(nil)), nil
+	block, _ := aes.NewCipher(key)
+	gcm, _ := c.NewGCM(block)
+
+	nonce, err := h.GenerateRandomBytes(gcm.NonceSize())
+	if err != nil {
+		return "", err
+	}
+
+	result := gcm.Seal(nonce, nonce, []byte(plainText), nil)
+	return hex.EncodeToString(result), nil
 }
 
-func (h crypto) HMACSHA512Verify(secretKey, data, hash string) bool {
-	hashHMAC512 := hmac.New(sha512.New, []byte(secretKey))
+func (h *cryptoHelper) HMACSHA512Sign(secretKey, data string) (string, error) {
+	mac := hmac.New(sha512.New, []byte(secretKey))
+	mac.Write([]byte(data))
+	return hex.EncodeToString(mac.Sum(nil)), nil
+}
 
-	if _, err := hashHMAC512.Write([]byte(data)); err != nil {
+func (h *cryptoHelper) HMACSHA512Verify(secretKey, data, expectedHashHex string) bool {
+	expectedHash, err := hex.DecodeString(expectedHashHex)
+	if err != nil {
 		return false
 	}
 
-	return hmac.Equal([]byte(hash), hashHMAC512.Sum(nil))
+	mac := hmac.New(sha512.New, []byte(secretKey))
+	mac.Write([]byte(data))
+	actualHash := mac.Sum(nil)
+
+	return hmac.Equal(actualHash, expectedHash)
 }
 
-func (h crypto) SHA256Sign(plainText string) (string, error) {
-	hashSHA256 := sha256.New()
-
-	if _, err := hashSHA256.Write([]byte(plainText)); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hashSHA256.Sum(nil)), nil
+func (h *cryptoHelper) SHA256Sign(plainText string) (string, error) {
+	hash := sha256.Sum256([]byte(plainText))
+	return hex.EncodeToString(hash[:]), nil
 }
 
-func (h crypto) SHA512Sign(plainText string) (string, error) {
-	hashSHA512 := sha512.New()
+func (h *cryptoHelper) SHA512Sign(plainText string) (string, error) {
+	hash := sha512.Sum512([]byte(plainText))
+	return hex.EncodeToString(hash[:]), nil
+}
 
-	if _, err := hashSHA512.Write([]byte(plainText)); err != nil {
+func (h *cryptoHelper) GenerateRandomBytes(length int) ([]byte, error) {
+	if length <= 0 {
+		return nil, errors.New("invalid length")
+	}
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return nil, fmt.Errorf("entropy source failure: %w", err)
+	}
+	return b, nil
+}
+
+func (h *cryptoHelper) GenerateRandomHex(length int) (string, error) {
+	b, err := h.GenerateRandomBytes(length)
+	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(hashSHA512.Sum(nil)), nil
+	return hex.EncodeToString(b), nil
 }

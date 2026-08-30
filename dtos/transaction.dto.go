@@ -36,6 +36,8 @@ type (
 		RequestData       any     `json:"request_data,omitempty"`
 		FeeType           string  `json:"fee_type,omitempty"`
 		MerchantID        string  `json:"merchant_id,omitempty"`
+		MerchantNetworkID string  `json:"merchant_network_id,omitempty"`
+		QrEmvcoImage      string  `json:"qr_emvco_image,omitempty"`
 	}
 
 	CallbackTransaction struct {
@@ -59,6 +61,7 @@ type (
 		RequestData       any    `json:"request_data,omitempty"`
 		FeeType           string `json:"fee_type,omitempty"`
 		MerchantID        string `json:"merchant_id,omitempty"`
+		MerchantNetworkID string `json:"merchant_network_id,omitempty"`
 		WebhookUrl        string `json:"webhook_url,omitempty"`
 		AdditionalInfo    any    `json:"additional_info,omitempty"`
 		VaNumber          string `json:"va_number,omitempty"`
@@ -73,5 +76,18 @@ type (
 		MerchantName      string `json:"merchant_name,omitempty"`
 		BuyerFullname     string `json:"buyer_fullname,omitempty"`
 		MerchantLocation  string `json:"merchant_location,omitempty"`
+	}
+
+	TransactionInfo struct {
+		IssuerId         string `json:"issuer_id,omitempty"`
+		IssuerName       string `json:"issuer_name,omitempty"`
+		CustomerPan      string `json:"customer_pan,omitempty"`
+		MerchantFee      string `json:"merchant_fee,omitempty"`
+		MerchantPan      string `json:"merchant_pan,omitempty"`
+		ReferenceId      string `json:"reference_id,omitempty"`
+		AcquirerName     string `json:"acquirer_name,omitempty"`
+		MerchantName     string `json:"merchant_name,omitempty"`
+		BuyerFullname    string `json:"buyer_fullname,omitempty"`
+		MerchantLocation string `json:"merchant_location,omitempty"`
 	}
 )

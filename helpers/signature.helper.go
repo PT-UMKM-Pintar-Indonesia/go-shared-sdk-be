@@ -1,16 +1,16 @@
 package sdk_helper
 
 import (
-	cpt "crypto"
+	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -22,178 +22,121 @@ import (
 type signature struct{}
 
 func NewSignature() sdk_inf.ISignature {
-	return signature{}
+	return &signature{}
 }
 
-func (p signature) encoding(alg, enc string, body any) (string, error) {
-	switch alg {
-
+func (h *signature) encode(data []byte, mode string, encoding string) (string, error) {
+	switch encoding {
 	case sdk_cons.HEX:
-		if enc == "encode" {
-			return hex.EncodeToString(body.([]byte)), nil
-		} else {
-			decode, err := hex.DecodeString(body.(string))
-			return string(decode), err
-		}
-
+		return hex.EncodeToString(data), nil
 	case sdk_cons.BASE64:
-		if enc == "encode" {
-			return base64.StdEncoding.EncodeToString(body.([]byte)), nil
-		} else {
-			decode, err := base64.StdEncoding.DecodeString(body.(string))
-			return string(decode), err
-		}
-
+		return base64.StdEncoding.EncodeToString(data), nil
 	default:
-		return sdk_cons.EMPTY, errors.New("Encoding unsupported")
+		return "", errors.New("unsupported encoding")
 	}
 }
 
-func (p signature) GenerateAsymmetric(req sdk_dto.Asymmetric) (res sdk_opt.SignatureResponse) {
-	cert := NewCert()
-	salt := rand.Reader
-
-	cipherBody := []byte(req.ClientKey + "|" + req.TimeStamp)
-	cipherBodyHash256 := sha256.New()
-	cipherBodyHash256.Write(cipherBody)
-	cipherBodyHash := cipherBodyHash256.Sum(nil)
-
-	privateKeyRawToKeyReq := sdk_dto.PrivateKeyRawToKey{}
-	privateKeyRawToKeyRes := sdk_opt.CertResponse{}
-
-	switch req.PrivateKeyType {
-
-	case sdk_cons.PRIVPKCS1:
-		privateKeyRawToKeyReq.KeyType = req.PrivateKeyType
-		privateKeyRawToKeyReq.KeyRawPrivate = req.PrivateKey
-		privateKeyRawToKeyReq.Password = req.Password
-
-		privateKeyRawToKeyRes = cert.PrivateKeyRawToKey(privateKeyRawToKeyReq)
-		if privateKeyRawToKeyRes.Error != nil {
-			res.Error = privateKeyRawToKeyRes.Error
-			return
-		}
-
-	case sdk_cons.PRIVPKCS8:
-		privateKeyRawToKeyReq.KeyType = req.PrivateKeyType
-		privateKeyRawToKeyReq.KeyRawPrivate = req.PrivateKey
-		privateKeyRawToKeyReq.Password = req.Password
-
-		privateKeyRawToKeyRes = cert.PrivateKeyRawToKey(privateKeyRawToKeyReq)
-		if privateKeyRawToKeyRes.Error != nil {
-			res.Error = privateKeyRawToKeyRes.Error
-			return
-		}
-
+func (h *signature) decode(data string, encoding string) ([]byte, error) {
+	switch encoding {
+	case sdk_cons.HEX:
+		return hex.DecodeString(data)
+	case sdk_cons.BASE64:
+		return base64.StdEncoding.DecodeString(data)
 	default:
-		res.Error = errors.New("Invalid GenerateAsymmetric PEM PrivateKey certificate unsupported")
+		return nil, errors.New("unsupported decoding")
+	}
+}
+
+func (h *signature) GenerateAsymmetric(req *sdk_dto.Asymmetric) (res sdk_opt.SignatureResponse) {
+	cert := NewCert()
+
+	var sb strings.Builder
+	sb.WriteString(req.ClientKey)
+	sb.WriteString("|")
+	sb.WriteString(req.TimeStamp)
+
+	hashed := sha256.Sum256([]byte(sb.String()))
+
+	if req.PrivateKeyType != sdk_cons.PRIVPKCS1 && req.PrivateKeyType != sdk_cons.PRIVPKCS8 {
+		res.Error = errors.New("invalid private key type")
 		return
 	}
 
-	if err := privateKeyRawToKeyRes.KeyPrivate.Validate(); err != nil {
-		res.Error = err
+	certRes := cert.PrivateKeyRawToKey(&sdk_dto.PrivateKeyRawToKey{
+		KeyType:       req.PrivateKeyType,
+		KeyRawPrivate: req.PrivateKey,
+		Password:      req.Password,
+	})
+
+	if certRes.Error != nil {
+		res.Error = certRes.Error
 		return
 	}
 
-	signature, err := rsa.SignPKCS1v15(salt, privateKeyRawToKeyRes.KeyPrivate, cpt.SHA256, cipherBodyHash)
+	sig, err := rsa.SignPKCS1v15(rand.Reader, certRes.KeyPrivate, crypto.SHA256, hashed[:])
 	if err != nil {
 		res.Error = err
 		return
 	}
 
-	if err := rsa.VerifyPKCS1v15(&privateKeyRawToKeyRes.KeyPrivate.PublicKey, cpt.SHA256, cipherBodyHash, signature); err != nil {
-		res.Error = err
-		return
-	}
-
-	if res.Signature, err = p.encoding(req.Encoding, "encode", signature); err != nil {
-		res.Error = err
-		return
-	}
-
+	res.Signature, res.Error = h.encode(sig, "encode", req.Encoding)
 	return
 }
 
-func (p signature) GenerateSymmetric(req sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
-	cipherBodyHash256 := cpt.SHA256.New()
-	if _, err := cipherBodyHash256.Write(req.Body); err != nil {
-		res.Error = err
-		return
-	}
+func (h *signature) GenerateSymmetric(req *sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
+	bodyHash := sha256.Sum256(req.Body)
+	bodyHashHex := strings.ToLower(hex.EncodeToString(bodyHash[:]))
 
-	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	sha256SecretKey, err := p.encoding(sdk_cons.HEX, "encode", cipherBodyHash)
-	if err != nil {
-		res.Error = err
-		return
-	}
-	sha256SecretKey = strings.ToLower(sha256SecretKey)
+	var sb strings.Builder
+	sb.WriteString(req.Method)
+	sb.WriteString(":")
+	sb.WriteString(req.Url)
+	sb.WriteString(":")
+	sb.WriteString(req.AccessToken)
+	sb.WriteString(":")
+	sb.WriteString(bodyHashHex)
+	sb.WriteString(":")
+	sb.WriteString(req.TimeStamp)
 
-	hmac512Body := req.Method + ":" + req.Url + ":" + req.AccessToken + ":" + sha256SecretKey + ":" + req.TimeStamp
-	hmac512 := hmac.New(cpt.SHA512.New, []byte(req.ClientSecret))
+	mac := hmac.New(sha512.New, []byte(req.ClientSecret))
+	mac.Write([]byte(strings.TrimSpace(sb.String())))
 
-	if _, err := hmac512.Write([]byte(strings.TrimSpace(hmac512Body))); err != nil {
-		res.Error = err
-		return
-	}
-
-	signature, err := p.encoding(req.Encoding, "encode", hmac512.Sum(nil))
-	if err != nil {
-		res.Error = err
-		return
-	}
-	res.Signature = signature
-
+	res.Signature, res.Error = h.encode(mac.Sum(nil), "encode", req.Encoding)
 	return
 }
 
-func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.SignatureResponse) {
+func (h *signature) VerifyAsymmetric(req *sdk_dto.VerifyAsymmetric) (res sdk_opt.SignatureResponse) {
 	cert := NewCert()
 
-	cipherBody := []byte(req.ClientId + "|" + req.Timestamp)
-	cipherBodyHash256 := sha256.New()
-	cipherBodyHash256.Write(cipherBody)
-	cipherBodyHash := cipherBodyHash256.Sum(nil)
+	var sb strings.Builder
+	sb.WriteString(req.ClientId)
+	sb.WriteString("|")
+	sb.WriteString(req.Timestamp)
+	hashed := sha256.Sum256([]byte(sb.String()))
 
-	publicKeyRawToKeyReq := sdk_dto.PublicKeyRawToKey{}
-	publicKeyRawToKeyRes := sdk_opt.CertResponse{}
-
-	switch req.PublicKeyType {
-
-	case sdk_cons.PUBPKCS1:
-		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
-		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
-
-		publicKeyRawToKeyRes = cert.PublicKeyRawToKey(publicKeyRawToKeyReq)
-		if publicKeyRawToKeyRes.Error != nil {
-			res.Error = publicKeyRawToKeyRes.Error
-			return
-		}
-
-	case sdk_cons.PUBPKCS8:
-		publicKeyRawToKeyReq.KeyType = req.PublicKeyType
-		publicKeyRawToKeyReq.KeyRawPublic = req.PublicKey
-
-		publicKeyRawToKeyRes = cert.PublicKeyRawToKey(publicKeyRawToKeyReq)
-		if publicKeyRawToKeyRes.Error != nil {
-			res.Error = publicKeyRawToKeyRes.Error
-			return
-		}
-
-	default:
-		res.Error = errors.New("Invalid VerifyAsymmetric PEM PublicKey certificate unsupported")
+	if req.PublicKeyType != sdk_cons.PUBPKCS1 && req.PublicKeyType != sdk_cons.PUBPKCS8 {
+		res.Error = errors.New("invalid public key type")
 		return
 	}
 
-	decodeSignature, err := p.encoding(req.Encoding, "decode", req.Signature)
+	certRes := cert.PublicKeyRawToKey(&sdk_dto.PublicKeyRawToKey{
+		KeyType:      req.PublicKeyType,
+		KeyRawPublic: req.PublicKey,
+	})
+	if certRes.Error != nil {
+		res.Error = certRes.Error
+		return
+	}
+
+	sigBytes, err := h.decode(req.Signature, req.Encoding)
 	if err != nil {
 		res.Error = err
 		return
 	}
 
-	err = rsa.VerifyPKCS1v15(publicKeyRawToKeyRes.KeyPublic, cpt.SHA256, cipherBodyHash, []byte(decodeSignature))
+	err = rsa.VerifyPKCS1v15(certRes.KeyPublic, crypto.SHA256, hashed[:], sigBytes)
 	if err != nil {
-		res.Error = errors.New("Unverified signature unmatch PEM PublicKey certificate unsupported")
+		res.Error = errors.New("signature verification failed")
 		return
 	}
 
@@ -201,37 +144,24 @@ func (p signature) VerifyAsymmetric(req sdk_dto.VerifyAsymmetric) (res sdk_opt.S
 	return
 }
 
-func (p signature) VerifySymmetric(req sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
-	cipherBodyHash256 := sha256.New()
-	if _, err := cipherBodyHash256.Write(req.Body); err != nil {
-		res.Error = err
+func (h *signature) VerifySymmetric(req *sdk_dto.VerifySymetric) (res sdk_opt.SignatureResponse) {
+	internalSigRes := h.GenerateSymmetric(&sdk_dto.Symetric{
+		Method:       req.Method,
+		Url:          req.Url,
+		AccessToken:  req.AccessToken,
+		Body:         req.Body,
+		TimeStamp:    req.TimeStamp,
+		ClientSecret: req.ClientSecret,
+		Encoding:     req.Encoding,
+	})
+
+	if internalSigRes.Error != nil {
+		res.Error = internalSigRes.Error
 		return
 	}
 
-	cipherBodyHash := cipherBodyHash256.Sum(nil)
-	sha256SecretKey, err := p.encoding(sdk_cons.HEX, "encode", cipherBodyHash)
-	if err != nil {
-		res.Error = err
-		return
-	}
-	sha256SecretKey = strings.ToLower(sha256SecretKey)
-
-	hmac512Body := req.Method + ":" + req.Url + ":" + req.AccessToken + ":" + sha256SecretKey + ":" + req.TimeStamp
-	hmac512 := hmac.New(cpt.SHA512.New, []byte(req.ClientSecret))
-
-	if _, err := hmac512.Write([]byte(strings.TrimSpace(hmac512Body))); err != nil {
-		res.Error = err
-		return
-	}
-
-	res.Signature, err = p.encoding(req.Encoding, "encode", hmac512.Sum(nil))
-	if err != nil {
-		res.Error = err
-		return
-	}
-
-	if ok := reflect.DeepEqual(req.Signature, res.Signature); !ok {
-		res.Error = fmt.Errorf("Unmatch signature request: %s between internal signature: %s", req.Signature, res.Signature)
+	if !hmac.Equal([]byte(req.Signature), []byte(internalSigRes.Signature)) {
+		res.Error = fmt.Errorf("signature mismatch")
 		return
 	}
 

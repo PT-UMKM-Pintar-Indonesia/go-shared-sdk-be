@@ -1,19 +1,25 @@
-package sdk_opt
+package sdk_dro
 
 type (
 	Application struct {
-		ENV          string
-		PORT         string
-		INBOUND_SIZE int
+		ENV           string
+		PORT          string
+		INBOUND_SIZE  int
+		OUTBOUND_SIZE int
 	}
 
 	Redis struct {
-		URL      string
-		HOST     string
-		PORT     int
-		USER     string
-		PASSWORD string
-		DB       string
+		URL              string
+		URLS             string
+		HOST             string
+		PORT             int
+		USER             string
+		PASSWORD         string
+		DB               string
+		CLUSTER          bool
+		CSN_CLUSTER      string
+		NAME_CLUSTER     string
+		PASSWORD_CLUSTER string
 	}
 
 	Postgres struct {
@@ -51,13 +57,18 @@ type (
 	}
 
 	RabbitMQ struct {
-		URL      string
-		VSN      string
-		HOST     string
-		PORT     int
-		USER     string
-		PASSWORD string
-		SECRET   string
+		URL         string
+		URLS        string
+		VSN         string
+		HOST        string
+		PORT        int
+		USER        string
+		PASSWORD    string
+		SECRET      string
+		CONCURRENCY int
+		QOS         int
+		CLUSTER     bool
+		QSN_CLUSTER string
 	}
 
 	Smtp struct {
@@ -67,7 +78,7 @@ type (
 		PASSWORD string
 	}
 
-	Environtment struct {
+	Environment struct {
 		APP      Application
 		REDIS    Redis
 		POSTGRES Postgres

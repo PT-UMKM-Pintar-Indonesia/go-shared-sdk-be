@@ -1,18 +1,27 @@
 package sdk_config
 
 import (
+	"fmt"
 	"os"
 
-	genv "github.com/caarlos0/env"
+	"github.com/caarlos0/env"
 	"github.com/spf13/viper"
 
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
-	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
+	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, error) {
-	cfg := sdk_dto.Config{}
+func NewEnvironment(name, path, ext string, bind any) (*sdk_dro.Environment, error) {
+	cfg := &sdk_dto.Config{}
 
+	if err := loadConfig(name, path, ext, cfg, bind); err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	return mapToOutput(cfg, bind), nil
+}
+
+func loadConfig(name, path, ext string, cfg, bind any) error {
 	if _, ok := os.LookupEnv("GO_ENV"); !ok {
 		viper.SetConfigName(name)
 		viper.SetConfigType(ext)
@@ -20,46 +29,49 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 		viper.AutomaticEnv()
 
 		if err := viper.ReadInConfig(); err != nil {
-			return sdk_opt.Environtment{}, err
+			return err
 		}
 
-		if err := viper.Unmarshal(&cfg); err != nil {
-			return sdk_opt.Environtment{}, err
+		if err := viper.Unmarshal(cfg); err != nil {
+			return err
 		}
 
 		if bind != nil {
-			if err := viper.Unmarshal(bind); err != nil {
-				return sdk_opt.Environtment{}, err
-			}
+			return viper.Unmarshal(bind)
 		}
-
 	} else {
-		if err := genv.Parse(&cfg); err != nil {
-			return sdk_opt.Environtment{}, err
+		if err := env.Parse(cfg); err != nil {
+			return err
 		}
 
 		if bind != nil {
-			if err := genv.Parse(bind); err != nil {
-				return sdk_opt.Environtment{}, err
-			}
+			return env.Parse(bind)
 		}
 	}
 
-	return sdk_opt.Environtment{
-		APP: sdk_opt.Application{
+	return nil
+}
+
+func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_dro.Environment {
+	return &sdk_dro.Environment{
+		APP: sdk_dro.Application{
 			ENV:          cfg.ENV,
 			PORT:         cfg.PORT,
 			INBOUND_SIZE: cfg.INBOUND_SIZE,
 		},
-		REDIS: sdk_opt.Redis{
-			URL:      cfg.REDIS_CSN,
-			HOST:     cfg.REDIS_HOST,
-			PORT:     cfg.REDIS_PORT,
-			USER:     cfg.REDIS_USER,
-			PASSWORD: cfg.REDIS_PASSWORD,
-			DB:       cfg.REDIS_DB,
+		REDIS: sdk_dro.Redis{
+			URL:              cfg.REDIS_CSN,
+			URLS:             cfg.REDIS_CSN_CLUSTER,
+			HOST:             cfg.REDIS_HOST,
+			PORT:             cfg.REDIS_PORT,
+			USER:             cfg.REDIS_USER,
+			PASSWORD:         cfg.REDIS_PASSWORD,
+			DB:               cfg.REDIS_DB,
+			CLUSTER:          cfg.REDIS_CLUSTER,
+			NAME_CLUSTER:     cfg.REDIS_NAME_CLUSTER,
+			PASSWORD_CLUSTER: cfg.REDIS_PASSWORD_CLUSTER,
 		},
-		POSTGRES: sdk_opt.Postgres{
+		POSTGRES: sdk_dro.Postgres{
 			URL:      cfg.PG_DSN,
 			HOST:     cfg.PG_HOST,
 			PORT:     cfg.PG_PORT,
@@ -67,7 +79,7 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			PASSWORD: cfg.PG_PASSWORD,
 			DB:       cfg.PG_DB,
 		},
-		MYSQL: sdk_opt.Mysql{
+		MYSQL: sdk_dro.Mysql{
 			URL:      cfg.MYSQL_DSN,
 			HOST:     cfg.MYSQL_HOST,
 			PORT:     cfg.MYSQL_PORT,
@@ -75,7 +87,7 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			PASSWORD: cfg.MYSQL_PASSWORD,
 			DB:       cfg.MYSQL_DB,
 		},
-		DBCONFIG: sdk_opt.DatabaseConfig{
+		DBCONFIG: sdk_dro.DatabaseConfig{
 			TIMEOUT:       cfg.DB_TIMEOUT,
 			DIAL_TIMEOUT:  cfg.DB_DIAL_TIMEOUT,
 			READ_TIMEOUT:  cfg.DB_READ_TIMEOUT,
@@ -85,25 +97,29 @@ func NewEnvirontment(name, path, ext string, bind any) (sdk_opt.Environtment, er
 			CON_MAX:       cfg.DB_CONMAX,
 			CON_IDLE:      cfg.DB_CONIDLE,
 		},
-		JWT: sdk_opt.Jwt{
+		JWT: sdk_dro.Jwt{
 			SECRET:  cfg.JWT_SECRET_KEY,
 			EXPIRED: cfg.JWT_EXPIRED,
 		},
-		RABBITMQ: sdk_opt.RabbitMQ{
-			URL:      cfg.RABBITMQ_QSN,
-			VSN:      cfg.RABBITMQ_VSN,
-			HOST:     cfg.RABBITMQ_HOST,
-			PORT:     cfg.RABBITMQ_PORT,
-			USER:     cfg.RABBITMQ_USER,
-			PASSWORD: cfg.RABBITMQ_PASSWORD,
-			SECRET:   cfg.RABBITMQ_SECRET_KEY,
+		RABBITMQ: sdk_dro.RabbitMQ{
+			URL:         cfg.RABBITMQ_QSN,
+			URLS:        cfg.RABBITMQ_QSN_CLUSTER,
+			VSN:         cfg.RABBITMQ_VSN,
+			HOST:        cfg.RABBITMQ_HOST,
+			PORT:        cfg.RABBITMQ_PORT,
+			USER:        cfg.RABBITMQ_USER,
+			PASSWORD:    cfg.RABBITMQ_PASSWORD,
+			SECRET:      cfg.RABBITMQ_SECRET_KEY,
+			CONCURRENCY: cfg.RABBITMQ_CONCURRENCY,
+			QOS:         cfg.RABBITMQ_QOS,
+			CLUSTER:     cfg.RABBITMQ_CLUSTER,
 		},
-		SMTP: sdk_opt.Smtp{
+		SMTP: sdk_dro.Smtp{
 			HOST:     cfg.SMTP_HOST,
 			PORT:     cfg.SMTP_PORT,
 			USERNAME: cfg.SMTP_USERNAME,
 			PASSWORD: cfg.SMTP_PASSWORD,
 		},
 		BIND: bind,
-	}, nil
+	}
 }

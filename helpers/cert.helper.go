@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"strings"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -18,264 +19,223 @@ import (
 type cert struct{}
 
 func NewCert() sdk_inf.ICert {
-	return cert{}
+	return &cert{}
 }
 
-func (p cert) GenerateKey(req sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResponse) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, int(req.KeySize))
-	if err != nil {
-		res.Error = err
+func (h *cert) GenerateKey(req *sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResponse) {
+	if req.KeySize < 2048 {
+		res.Error = errors.New("security risk: key size must be at least 2048 bits")
 		return
 	}
 
-	privateKeyRaw := p.PrivateKeyToRaw(sdk_dto.PrivateKeyToRaw{KeyType: req.PrivateKeyType, KeyPrivate: privateKey})
-	if privateKeyRaw.Error != nil {
-		res.Error = err
+	privateKey, err := rsa.GenerateKey(rand.Reader, int(req.KeySize))
+	if err != nil {
+		res.Error = fmt.Errorf("failed to generate rsa key: %w", err)
+		return
+	}
+
+	privRes := h.PrivateKeyToRaw(&sdk_dto.PrivateKeyToRaw{
+		KeyType:    req.PrivateKeyType,
+		KeyPrivate: privateKey,
+	})
+
+	if privRes.Error != nil {
+		res.Error = privRes.Error
 		return
 	}
 
 	if req.Password != "" {
-		encryptPemBlock, err := x509.EncryptPEMBlock(rand.Reader, req.PrivateKeyType, []byte(privateKeyRaw.KeyRawPrivate), []byte(req.Password), x509.PEMCipherAES256)
+		block, _ := pem.Decode(privRes.KeyRawPrivate)
+
+		encBlock, err := x509.EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(req.Password), x509.PEMCipherAES256)
 		if err != nil {
-			res.Error = err
+			res.Error = fmt.Errorf("failed to encrypt pem: %w", err)
 			return
 		}
 
-		res.KeyRawPrivate = pem.EncodeToMemory(encryptPemBlock)
-
+		res.KeyRawPrivate = pem.EncodeToMemory(encBlock)
 	} else {
-		decodePemBlock, _ := pem.Decode([]byte(privateKeyRaw.KeyRawPrivate))
-		if decodePemBlock == nil {
-			res.Error = errors.New("Invalid GeneratePrivateKey PEM PrivateKey certificate")
-			return
-		}
-
-		res.KeyRawPrivate = pem.EncodeToMemory(decodePemBlock)
-
+		res.KeyRawPrivate = privRes.KeyRawPrivate
 	}
 
-	publicKeyRaw := p.PublicKeyToRaw(sdk_dto.PublicKeyToRaw{KeyType: req.PublicKeyType, KeyPublic: &privateKey.PublicKey})
-	if publicKeyRaw.Error != nil {
-		res.Error = err
+	pubRes := h.PublicKeyToRaw(&sdk_dto.PublicKeyToRaw{
+		KeyType:   req.PublicKeyType,
+		KeyPublic: &privateKey.PublicKey,
+	})
+
+	if pubRes.Error != nil {
+		res.Error = pubRes.Error
 		return
 	}
 
-	res.KeyRawPublic = publicKeyRaw.KeyRawPublic
-
-	if res.KeyRawPrivate == nil || res.KeyRawPublic == nil {
-		res.Error = errors.New("Invalid GeneratePrivateKey PEM PrivateKey certificate | PEM PublicKey certificate")
-		return
-	}
-
+	res.KeyRawPublic = pubRes.KeyRawPublic
 	return
 }
 
-func (p cert) PrivateKeyRawToKey(req sdk_dto.PrivateKeyRawToKey) (res sdk_opt.CertResponse) {
-	decodePemBlock, _ := pem.Decode(req.KeyRawPrivate)
-	if decodePemBlock == nil {
-		res.Error = errors.New("Invalid PrivateKeyRawToKey PEM PrivateKey certificate")
+func (h *cert) PrivateKeyRawToKey(req *sdk_dto.PrivateKeyRawToKey) (res sdk_opt.CertResponse) {
+	block, _ := pem.Decode(req.KeyRawPrivate)
+	if block == nil {
+		res.Error = errors.New("failed to decode PEM block")
 		return
 	}
 
-	if x509.IsEncryptedPEMBlock(decodePemBlock) && req.Password != "" {
-		decryptPrivateKey, err := x509.DecryptPEMBlock(decodePemBlock, []byte(req.Password))
-		if err != nil {
-			res.Error = err
+	der := block.Bytes
+	var err error
+
+	if x509.IsEncryptedPEMBlock(block) {
+		if req.Password == "" {
+			res.Error = errors.New("private key is encrypted but no password provided")
 			return
 		}
-
-		decodePemBlock, _ = pem.Decode(decryptPrivateKey)
-		if decodePemBlock == nil {
-			res.Error = errors.New("Invalid PrivateKeyRawToKey PEM PrivateKey certificate")
+		der, err = x509.DecryptPEMBlock(block, []byte(req.Password))
+		if err != nil {
+			res.Error = fmt.Errorf("failed to decrypt PEM: %w", err)
 			return
 		}
 	}
 
+	var priv interface{}
 	if req.KeyType == sdk_cons.PRIVPKCS1 {
-		privateKey, err := x509.ParsePKCS1PrivateKey(decodePemBlock.Bytes)
-		if err != nil {
-			res.Error = err
-			return
-		}
+		priv, err = x509.ParsePKCS1PrivateKey(der)
+	} else {
+		priv, err = x509.ParsePKCS8PrivateKey(der)
+	}
 
-		res.KeyType = req.KeyType
-		res.KeyPrivate = privateKey
+	if err != nil {
+		res.Error = fmt.Errorf("failed to parse private key: %w", err)
 		return
 	}
 
-	privateKey, err := x509.ParsePKCS8PrivateKey(decodePemBlock.Bytes)
-	if err != nil {
-		res.Error = err
+	rsaPriv, ok := priv.(*rsa.PrivateKey)
+	if !ok {
+		res.Error = errors.New("not an RSA private key")
 		return
 	}
 
 	res.KeyType = req.KeyType
-	res.KeyPrivate = privateKey.(*rsa.PrivateKey)
+	res.KeyPrivate = rsaPriv
+	res.KeyPublic = &rsaPriv.PublicKey
 	return
 }
 
-func (p cert) PublicKeyRawToKey(req sdk_dto.PublicKeyRawToKey) (res sdk_opt.CertResponse) {
-	decodePemBlock, _ := pem.Decode(req.KeyRawPublic)
-	if decodePemBlock == nil {
-		res.Error = errors.New("Invalid PublicKeyRawToKey PEM PrivateKey certificate")
+func (h *cert) PublicKeyRawToKey(req *sdk_dto.PublicKeyRawToKey) (res sdk_opt.CertResponse) {
+	block, _ := pem.Decode(req.KeyRawPublic)
+	if block == nil {
+		res.Error = errors.New("failed to decode PEM block")
 		return
 	}
+
+	var pub interface{}
+	var err error
 
 	if req.KeyType == sdk_cons.PUBPKCS1 {
-		publicKey, err := x509.ParsePKCS1PublicKey(decodePemBlock.Bytes)
-		if err != nil {
-			res.Error = err
-			return
-		}
+		pub, err = x509.ParsePKCS1PublicKey(block.Bytes)
+	} else {
+		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
+	}
 
-		res.KeyType = req.KeyType
-		res.KeyPublic = publicKey
+	if err != nil {
+		res.Error = fmt.Errorf("failed to parse public key: %w", err)
 		return
 	}
 
-	publicKey, err := x509.ParsePKIXPublicKey(decodePemBlock.Bytes)
-	if err != nil {
-		res.Error = err
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		res.Error = errors.New("not an RSA public key")
 		return
 	}
 
 	res.KeyType = req.KeyType
-	res.KeyPublic = publicKey.(*rsa.PublicKey)
+	res.KeyPublic = rsaPub
 	return
 }
 
-func (p cert) PrivateKeyToRaw(req sdk_dto.PrivateKeyToRaw) (res sdk_opt.CertResponse) {
-	if req.KeyType == sdk_cons.PRIVPKCS1 {
-		res.KeyRawPrivate = pem.EncodeToMemory(&pem.Block{
-			Type:  req.KeyType,
-			Bytes: x509.MarshalPKCS1PrivateKey(req.KeyPrivate),
-		})
+func (h *cert) PrivateKeyToRaw(req *sdk_dto.PrivateKeyToRaw) (res sdk_opt.CertResponse) {
+	var der []byte
+	var err error
 
+	if req.KeyType == sdk_cons.PRIVPKCS1 {
+		der = x509.MarshalPKCS1PrivateKey(req.KeyPrivate)
 	} else if req.KeyType == sdk_cons.PRIVPKCS8 {
-		privateKey, err := x509.MarshalPKCS8PrivateKey(req.KeyPrivate)
-		if err != nil {
-			return
-		}
-
-		res.KeyRawPrivate = pem.EncodeToMemory(&pem.Block{
-			Type:  req.KeyType,
-			Bytes: privateKey,
-		})
-
+		der, err = x509.MarshalPKCS8PrivateKey(req.KeyPrivate)
 	} else {
-		res.Error = errors.New("Invalid PrivateKeyToRaw PEM PrivateKey certificate")
+		res.Error = errors.New("unsupported private key type")
 		return
 	}
 
-	if res.KeyRawPrivate == nil {
-		res.Error = errors.New("Invalid PrivateKeyToRaw PEM PrivateKey certificate")
+	if err != nil {
+		res.Error = err
 		return
 	}
 
+	res.KeyRawPrivate = pem.EncodeToMemory(&pem.Block{Type: req.KeyType, Bytes: der})
 	res.KeyType = req.KeyType
 	return
 }
 
-func (p cert) PublicKeyToRaw(req sdk_dto.PublicKeyToRaw) (res sdk_opt.CertResponse) {
+func (h *cert) PublicKeyToRaw(req *sdk_dto.PublicKeyToRaw) (res sdk_opt.CertResponse) {
+	var der []byte
+	var err error
+
 	if req.KeyType == sdk_cons.PUBPKCS1 {
-		res.KeyRawPublic = pem.EncodeToMemory(&pem.Block{
-			Type:  req.KeyType,
-			Bytes: x509.MarshalPKCS1PublicKey(req.KeyPublic),
-		})
-
+		der = x509.MarshalPKCS1PublicKey(req.KeyPublic)
 	} else if req.KeyType == sdk_cons.PUBPKCS8 {
-		publicKey, err := x509.MarshalPKIXPublicKey(req.KeyPublic)
-		if err != nil {
-			return
-		}
-
-		res.KeyRawPublic = pem.EncodeToMemory(&pem.Block{
-			Type:  req.KeyType,
-			Bytes: publicKey,
-		})
-
+		der, err = x509.MarshalPKIXPublicKey(req.KeyPublic)
 	} else {
-		res.Error = errors.New("Invalid PublicKeyToRaw PEM PublicKey certificate")
+		res.Error = errors.New("unsupported public key type")
 		return
 	}
 
-	if res.KeyRawPublic == nil {
-		res.Error = errors.New("Invalid PublicKeyToRaw PEM PublicKey certificate")
+	if err != nil {
+		res.Error = err
 		return
 	}
 
+	res.KeyRawPublic = pem.EncodeToMemory(&pem.Block{Type: req.KeyType, Bytes: der})
 	res.KeyType = req.KeyType
 	return
 }
 
-func (p cert) PrivateKeyBase64ToRaw(req sdk_dto.PrivateKeyBase64ToRaw) (res sdk_opt.CertResponse) {
-	decodeToStr, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.KeyRawPrivate))
+func (h *cert) base64ToRaw(input string, expectedTypes ...string) ([]byte, string, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input))
+	if err != nil {
+		return nil, "", fmt.Errorf("base64 decode failed: %w", err)
+	}
+
+	block, _ := pem.Decode(raw)
+	if block == nil {
+		return nil, "", errors.New("invalid PEM after base64 decode")
+	}
+
+	for _, t := range expectedTypes {
+		if block.Type == t {
+			return pem.EncodeToMemory(block), block.Type, nil
+		}
+	}
+
+	return nil, "", fmt.Errorf("unexpected PEM type: %s", block.Type)
+}
+
+func (h *cert) PrivateKeyBase64ToRaw(req *sdk_dto.PrivateKeyBase64ToRaw) (res sdk_opt.CertResponse) {
+	raw, keyType, err := h.base64ToRaw(req.KeyRawPrivate, sdk_cons.PRIVPKCS1, sdk_cons.PRIVPKCS8, sdk_cons.CERTIFICATE)
 	if err != nil {
 		res.Error = err
 		return
 	}
 
-	decodePemBlock, _ := pem.Decode([]byte(decodeToStr))
-	if decodePemBlock == nil {
-		res.Error = errors.New("Invalid PrivateKeyBase64ToRaw PEM PrivateKey certificate")
-		return
-	}
-
-	if decodePemBlock.Type == sdk_cons.PRIVPKCS1 {
-		res.KeyRawPrivate = pem.EncodeToMemory(decodePemBlock)
-
-	} else if decodePemBlock.Type == sdk_cons.PRIVPKCS8 {
-		res.KeyRawPrivate = pem.EncodeToMemory(decodePemBlock)
-
-	} else if decodePemBlock.Type == sdk_cons.CERTIFICATE {
-		res.KeyRawPrivate = pem.EncodeToMemory(decodePemBlock)
-
-	} else {
-		res.Error = errors.New("Invalid PrivateKeyBase64ToRaw PEM PrivateKey certificate")
-		return
-	}
-
-	if res.KeyRawPrivate == nil {
-		res.Error = errors.New("Invalid PrivateKeyBase64ToRaw PEM PrivateKey certificate")
-		return
-	}
-
-	res.KeyType = decodePemBlock.Type
+	res.KeyRawPrivate = raw
+	res.KeyType = keyType
 	return
 }
 
-func (p cert) PublicKeyBase64ToRaw(req sdk_dto.PublicKeyBase64ToRaw) (res sdk_opt.CertResponse) {
-	decodeToStr, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.KeyRawPublic))
+func (h *cert) PublicKeyBase64ToRaw(req *sdk_dto.PublicKeyBase64ToRaw) (res sdk_opt.CertResponse) {
+	raw, keyType, err := h.base64ToRaw(req.KeyRawPublic, sdk_cons.PUBPKCS1, sdk_cons.PUBPKCS8, sdk_cons.CERTIFICATE)
 	if err != nil {
 		res.Error = err
 		return
 	}
 
-	decodePemBlock, _ := pem.Decode([]byte(decodeToStr))
-	if decodePemBlock == nil {
-		res.Error = errors.New("Invalid PublicKeyBase64ToRaw  PublicKey certificate")
-		return
-	}
-
-	if decodePemBlock.Type == sdk_cons.PUBPKCS1 {
-		res.KeyRawPublic = pem.EncodeToMemory(decodePemBlock)
-
-	} else if decodePemBlock.Type == sdk_cons.PUBPKCS8 {
-		res.KeyRawPublic = pem.EncodeToMemory(decodePemBlock)
-
-	} else if decodePemBlock.Type == sdk_cons.CERTIFICATE {
-		res.KeyRawPublic = pem.EncodeToMemory(decodePemBlock)
-
-	} else {
-		res.Error = errors.New("Invalid PublicKeyBase64ToRaw PEM PublicKey certificate")
-		return
-	}
-
-	if res.KeyRawPublic == nil {
-		res.Error = errors.New("Invalid PublicKeyBase64ToRaw PEM PublicKey certificate")
-		return
-	}
-
-	res.KeyType = decodePemBlock.Type
+	res.KeyRawPublic = raw
+	res.KeyType = keyType
 	return
 }
