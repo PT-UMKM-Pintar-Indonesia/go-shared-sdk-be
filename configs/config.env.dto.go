@@ -3,7 +3,6 @@ package sdk_config
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/caarlos0/env"
 	"github.com/spf13/viper"
@@ -62,7 +61,7 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_dro.Environment {
 		},
 		REDIS: sdk_dro.Redis{
 			URL:              cfg.REDIS_CSN,
-			URLS:             strings.Split(cfg.REDIS_CSN_CLUSTER, ","),
+			URLS:             cfg.REDIS_CSN_CLUSTER,
 			HOST:             cfg.REDIS_HOST,
 			PORT:             cfg.REDIS_PORT,
 			USER:             cfg.REDIS_USER,
@@ -104,7 +103,7 @@ func mapToOutput(cfg *sdk_dto.Config, bind any) *sdk_dro.Environment {
 		},
 		RABBITMQ: sdk_dro.RabbitMQ{
 			URL:         cfg.RABBITMQ_QSN,
-			URLS:        strings.Split(cfg.RABBITMQ_QSN_CLUSTER, ","),
+			URLS:        cfg.RABBITMQ_QSN_CLUSTER,
 			VSN:         cfg.RABBITMQ_VSN,
 			HOST:        cfg.RABBITMQ_HOST,
 			PORT:        cfg.RABBITMQ_PORT,

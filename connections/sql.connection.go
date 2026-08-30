@@ -7,7 +7,7 @@ import (
 	"time"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
-	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/uptrace/bun"
@@ -24,7 +24,7 @@ type connectionPoolConfig struct {
 	ConnMaxIdleTime time.Duration
 }
 
-func defaultConnectionPoolConfig(env *sdk_dto.Environment) *connectionPoolConfig {
+func defaultConnectionPoolConfig(env *sdk_dro.Environment) *connectionPoolConfig {
 	return &connectionPoolConfig{
 		MaxOpenConns:    env.DBCONFIG.MAX_CONN,
 		MaxIdleConns:    env.DBCONFIG.MAX_IDLE,
@@ -33,7 +33,7 @@ func defaultConnectionPoolConfig(env *sdk_dto.Environment) *connectionPoolConfig
 	}
 }
 
-func sqlConnectionWithConfig(ctx context.Context, appName, driver string, env *sdk_dto.Environment, poolConfig *connectionPoolConfig) (*bun.DB, error) {
+func sqlConnectionWithConfig(ctx context.Context, appName, driver string, env *sdk_dro.Environment, poolConfig *connectionPoolConfig) (*bun.DB, error) {
 	var (
 		bundb *bun.DB
 		db    *sql.DB
@@ -93,6 +93,6 @@ func sqlConnectionWithConfig(ctx context.Context, appName, driver string, env *s
 	return bundb, nil
 }
 
-func SqlConnection(ctx context.Context, appName, driver string, env *sdk_dto.Environment) (*bun.DB, error) {
+func SqlConnection(ctx context.Context, appName, driver string, env *sdk_dro.Environment) (*bun.DB, error) {
 	return sqlConnectionWithConfig(ctx, appName, driver, env, defaultConnectionPoolConfig(env))
 }

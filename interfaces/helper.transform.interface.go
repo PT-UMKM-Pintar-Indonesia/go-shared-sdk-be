@@ -9,4 +9,7 @@ type ITransform interface {
 	MapToStruct(src map[string]any, dest any) error
 	StructToMap(input any) (map[string]any, error)
 	Convert(src any, dest any) error
+	DecodeUUID(s string) string
+	EncodeUUID(s string) string
+	BodyToRaw(body any) string
 }

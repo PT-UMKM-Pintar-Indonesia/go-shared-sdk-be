@@ -10,7 +10,7 @@ type (
 
 	Redis struct {
 		URL              string
-		URLS             []string
+		URLS             string
 		HOST             string
 		PORT             int
 		USER             string
@@ -58,7 +58,7 @@ type (
 
 	RabbitMQ struct {
 		URL         string
-		URLS        []string
+		URLS        string
 		VSN         string
 		HOST        string
 		PORT        int
