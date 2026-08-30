@@ -62,7 +62,7 @@ type (
 	}
 )
 
-func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Conn, error) {
+func NewRabbitMQ(ctx context.Context, opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Conn, error) {
 	instanceID := shortuuid.New()
 
 	con, err := sdk_con.RabbitMQConnection(opt)
@@ -71,7 +71,7 @@ func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Con
 	}
 
 	client := &rabbitmqClient{
-		ctx:            opt.Ctx,
+		ctx:            ctx,
 		rabbitmq:       con,
 		instanceID:     instanceID,
 		replyQueueName: shortuuid.New(),
@@ -79,10 +79,10 @@ func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Con
 		cleanupDone:    make(chan struct{}),
 	}
 
-	go client.backgroundTasks()
+	go client.backgroundTasks(ctx)
 
 	go func() {
-		<-opt.Ctx.Done()
+		<-ctx.Done()
 		client.Close()
 	}()
 
@@ -94,7 +94,7 @@ func (h *rabbitmqClient) Close() error {
 	return nil
 }
 
-func (h *rabbitmqClient) backgroundTasks() {
+func (h *rabbitmqClient) backgroundTasks(ctx context.Context) {
 	cleanupTicker := time.NewTicker(replyQueueCleanupTicker)
 	healthTicker := time.NewTicker(publisherHealthInterval)
 
