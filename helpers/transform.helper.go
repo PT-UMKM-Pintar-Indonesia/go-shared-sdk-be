@@ -2,6 +2,7 @@ package sdk_helper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/caarlos0/env"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -30,7 +30,11 @@ func (h *transform) SrcToDest(src, dest any) error {
 		return errors.New("source or destination cannot be nil")
 	}
 
-	return copier.Copy(dest, src)
+	bytes, err := json.Marshal(src)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bytes, dest)
 }
 
 func (h *transform) CtxToStruct(ctx context.Context, key string, dest any) error {
@@ -39,7 +43,7 @@ func (h *transform) CtxToStruct(ctx context.Context, key string, dest any) error
 		return errors.New("key not found in context")
 	}
 
-	return copier.Copy(dest, src)
+	return h.SrcToDest(src, dest)
 }
 
 func (h *transform) EnvToStruct(name, path, ext string, dest any) error {
