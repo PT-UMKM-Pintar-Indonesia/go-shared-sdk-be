@@ -12,6 +12,7 @@ import (
 
 	"github.com/caarlos0/env"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -30,11 +31,24 @@ func (h *transform) SrcToDest(src, dest any) error {
 		return errors.New("source or destination cannot be nil")
 	}
 
-	bytes, err := json.Marshal(src)
-	if err != nil {
-		return err
+	srcType := reflect.TypeOf(src)
+	if srcType.Kind() == reflect.Ptr {
+		srcType = srcType.Elem()
 	}
-	return json.Unmarshal(bytes, dest)
+
+	if srcType.Kind() == reflect.Map {
+		bytes, err := json.Marshal(src)
+		if err != nil {
+			return err
+		}
+
+		return json.Unmarshal(bytes, dest)
+	}
+
+	return copier.CopyWithOption(dest, src, copier.Option{
+		IgnoreEmpty: true,
+		DeepCopy:    true,
+	})
 }
 
 func (h *transform) CtxToStruct(ctx context.Context, key string, dest any) error {
