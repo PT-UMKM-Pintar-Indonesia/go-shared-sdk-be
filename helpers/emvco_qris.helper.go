@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
 	"strings"
@@ -43,36 +45,41 @@ func EmvcoQris(qris string) (string, error) {
 		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to decode image (format=%s): %w", format, err)
 	}
 
-	hints := map[gozxing.DecodeHintType]interface{}{
-		gozxing.DecodeHintType_TRY_HARDER:    true,
-		gozxing.DecodeHintType_CHARACTER_SET: "UTF-8",
+	bounds := qrImage.Bounds()
+	padding := bounds.Dx() / 10
+	if padding < 10 {
+		padding = 10
+	}
+
+	newWidth := bounds.Dx() + (padding * 2)
+	newHeight := bounds.Dy() + (padding * 2)
+
+	rgba := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.Draw(rgba, rgba.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
+	draw.Draw(rgba, image.Rect(padding, padding, newWidth-padding, newHeight-padding), qrImage, bounds.Min, draw.Src)
+
+	hints := map[gozxing.DecodeHintType]any{
+		gozxing.DecodeHintType_TRY_HARDER:       true,
+		gozxing.DecodeHintType_CHARACTER_SET:    "UTF-8",
+		gozxing.DecodeHintType_POSSIBLE_FORMATS: []gozxing.BarcodeFormat{gozxing.BarcodeFormat_QR_CODE},
 	}
 
 	reader := qrcode.NewQRCodeReader()
 
-	bitmap1, err := gozxing.NewBinaryBitmapFromImage(qrImage)
-	if err != nil {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to create bitmap: %w", err)
-	}
-
-	result, err := reader.Decode(bitmap1, hints)
+	bitmap1, err := gozxing.NewBinaryBitmapFromImage(rgba)
 	if err == nil {
-		return result.GetText(), nil
+		if result, err := reader.Decode(bitmap1, hints); err == nil {
+			return result.GetText(), nil
+		}
 	}
 
-	source := gozxing.NewLuminanceSourceFromImage(qrImage)
-
+	source := gozxing.NewLuminanceSourceFromImage(rgba)
 	bitmap2, err := gozxing.NewBinaryBitmap(gozxing.NewGlobalHistgramBinarizer(source))
-	if err != nil {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to create fallback bitmap: %w", err)
-	}
-
-	result, err = reader.Decode(bitmap2, hints)
 	if err == nil {
-		return result.GetText(), nil
+		if result, err := reader.Decode(bitmap2, hints); err == nil {
+			return result.GetText(), nil
+		}
 	}
 
-	bounds := qrImage.Bounds()
-
-	return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: QR code unreadable (%dx%d, %s)", bounds.Dx(), bounds.Dy(), format)
+	return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: QR code genuinely unreadable after preprocessing and dual binarizer attempts")
 }
