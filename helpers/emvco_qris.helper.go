@@ -14,20 +14,9 @@ import (
 	"github.com/makiuchi-d/gozxing/qrcode"
 )
 
-const (
-	maxQRBase64Length = 2 * 1024 * 1024
-	maxQRImageWidth   = 2000
-	maxQRImageHeight  = 2000
-	minQRImageSize    = 50
-)
-
 func EmvcoQris(qris string) (string, error) {
 	if len(qris) == 0 {
 		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: empty input")
-	}
-
-	if len(qris) > maxQRBase64Length {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: input too large (%d bytes)", len(qris))
 	}
 
 	base64Str := qris
@@ -54,28 +43,36 @@ func EmvcoQris(qris string) (string, error) {
 		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to decode image (format=%s): %w", format, err)
 	}
 
-	bounds := qrImage.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-
-	if w < minQRImageSize || h < minQRImageSize {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: image too small (%dx%d), not a valid QR", w, h)
+	hints := map[gozxing.DecodeHintType]interface{}{
+		gozxing.DecodeHintType_TRY_HARDER:    true,
+		gozxing.DecodeHintType_CHARACTER_SET: "UTF-8",
 	}
 
-	if w > maxQRImageWidth || h > maxQRImageHeight {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: image too large (%dx%d)", w, h)
-	}
+	reader := qrcode.NewQRCodeReader()
 
-	qrImageBitmap, err := gozxing.NewBinaryBitmapFromImage(qrImage)
+	bitmap1, err := gozxing.NewBinaryBitmapFromImage(qrImage)
 	if err != nil {
 		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to create bitmap: %w", err)
 	}
 
-	hints := map[gozxing.DecodeHintType]interface{}{gozxing.DecodeHintType_TRY_HARDER: true}
-
-	result, err := qrcode.NewQRCodeReader().Decode(qrImageBitmap, hints)
-	if err != nil {
-		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: QR code unreadable (%dx%d, %s): %w", w, h, format, err)
+	result, err := reader.Decode(bitmap1, hints)
+	if err == nil {
+		return result.GetText(), nil
 	}
 
-	return result.GetText(), nil
+	source := gozxing.NewLuminanceSourceFromImage(qrImage)
+
+	bitmap2, err := gozxing.NewBinaryBitmap(gozxing.NewGlobalHistgramBinarizer(source))
+	if err != nil {
+		return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: failed to create fallback bitmap: %w", err)
+	}
+
+	result, err = reader.Decode(bitmap2, hints)
+	if err == nil {
+		return result.GetText(), nil
+	}
+
+	bounds := qrImage.Bounds()
+
+	return sdk_cons.EMPTY, fmt.Errorf("EmvcoQris: QR code unreadable (%dx%d, %s)", bounds.Dx(), bounds.Dy(), format)
 }
