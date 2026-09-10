@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"image"
+	_ "image/jpeg"
+	_ "image/png"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	"github.com/makiuchi-d/gozxing"

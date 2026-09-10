@@ -19,7 +19,6 @@ type (
 		Secure     bool
 		Timeout    int
 		KeepAlive  int
-		Cluster    bool
 		Shuffle    bool
 	}
 

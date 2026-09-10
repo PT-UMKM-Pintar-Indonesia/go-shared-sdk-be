@@ -17,8 +17,8 @@ type redis struct {
 	redis *goredis.Client
 }
 
-func NewRedis(opt *sdk_dto.RedisClientOptions) (sdk_inf.IRedis, *goredis.Client, error) {
-	con, err := sdk_con.RedisConnection(opt)
+func NewRedis(ctx context.Context, opt *sdk_dto.RedisClientOptions) (sdk_inf.IRedis, *goredis.Client, error) {
+	con, err := sdk_con.RedisConnection(ctx, opt)
 	if err != nil {
 		return nil, nil, err
 	}

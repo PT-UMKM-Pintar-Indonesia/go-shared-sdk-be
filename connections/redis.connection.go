@@ -13,7 +13,7 @@ import (
 
 type Option func(*redis.Options)
 
-func newRedisClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
+func redisClient(ctx context.Context, opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
 	options, err := redis.ParseURL(opt.Addr)
 	if err != nil {
 		return nil, err
@@ -67,20 +67,24 @@ func newRedisClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
 		options.ConnMaxLifetime = 30 * time.Minute
 	}
 
+	parsedAddr := options.Addr
+
 	if err := sdk_helper.NewTransform().SrcToDest(opt, options); err != nil {
 		return nil, err
 	}
 
+	options.Addr = parsedAddr
+
 	client := redis.NewClient(options)
 
-	if err := ping(client, opt.Ctx); err != nil {
+	if err := ping(client, ctx); err != nil {
 		return nil, err
 	}
 
 	return client, nil
 }
 
-func newRedisSentinelClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
+func redisSentinelClient(ctx context.Context, opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
 	transform := sdk_helper.NewTransform()
 
 	options := &redis.FailoverOptions{
@@ -140,13 +144,13 @@ func newRedisSentinelClient(opt *sdk_dto.RedisClientOptions) (*redis.Client, err
 		options.ConnMaxLifetime = 30 * time.Minute
 	}
 
-	if err := transform.SrcToDest(options, opt); err != nil {
+	if err := transform.SrcToDest(opt, options); err != nil {
 		return nil, err
 	}
 
 	client := redis.NewFailoverClient(options)
 
-	if err := ping(client, opt.Ctx); err != nil {
+	if err := ping(client, ctx); err != nil {
 		return nil, err
 	}
 
@@ -157,14 +161,14 @@ func ping(c *redis.Client, ctx context.Context) error {
 	return c.Ping(ctx).Err()
 }
 
-func RedisConnection(opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
+func RedisConnection(ctx context.Context, opt *sdk_dto.RedisClientOptions) (*redis.Client, error) {
 	if opt.Addr == sdk_cons.EMPTY {
 		return nil, errors.New("redis url is required")
 	}
 
-	if opt.Cluster {
-		return newRedisSentinelClient(opt)
+	if len(opt.SentinelAddrs) > 0 {
+		return redisSentinelClient(ctx, opt)
 	}
 
-	return newRedisClient(opt)
+	return redisClient(ctx, opt)
 }

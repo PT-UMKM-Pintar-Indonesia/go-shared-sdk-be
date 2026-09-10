@@ -2,6 +2,7 @@ package sdk_helper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,7 +31,24 @@ func (h *transform) SrcToDest(src, dest any) error {
 		return errors.New("source or destination cannot be nil")
 	}
 
-	return copier.Copy(dest, src)
+	srcType := reflect.TypeOf(src)
+	if srcType.Kind() == reflect.Ptr {
+		srcType = srcType.Elem()
+	}
+
+	if srcType.Kind() == reflect.Map {
+		bytes, err := json.Marshal(src)
+		if err != nil {
+			return err
+		}
+
+		return json.Unmarshal(bytes, dest)
+	}
+
+	return copier.CopyWithOption(dest, src, copier.Option{
+		IgnoreEmpty: true,
+		DeepCopy:    true,
+	})
 }
 
 func (h *transform) CtxToStruct(ctx context.Context, key string, dest any) error {
@@ -39,7 +57,7 @@ func (h *transform) CtxToStruct(ctx context.Context, key string, dest any) error
 		return errors.New("key not found in context")
 	}
 
-	return copier.Copy(dest, src)
+	return h.SrcToDest(src, dest)
 }
 
 func (h *transform) EnvToStruct(name, path, ext string, dest any) error {

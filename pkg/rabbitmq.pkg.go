@@ -62,24 +62,16 @@ type (
 	}
 )
 
-func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Conn, error) {
+func NewRabbitMQ(ctx context.Context, opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Conn, error) {
 	instanceID := shortuuid.New()
 
-	var con *amqp.Conn
-	var err error
-
-	if opt.Cluster {
-		con, err = sdk_con.RabbitConnectionCluster(opt)
-	} else {
-		con, err = sdk_con.RabbitConnection(opt)
-	}
-
+	con, err := sdk_con.RabbitMQConnection(opt)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	client := &rabbitmqClient{
-		ctx:            opt.Ctx,
+		ctx:            ctx,
 		rabbitmq:       con,
 		instanceID:     instanceID,
 		replyQueueName: shortuuid.New(),
@@ -87,10 +79,10 @@ func NewRabbitMQ(opt *sdk_dto.RabbitClientOptions) (sdk_inf.IRabbitMQ, *amqp.Con
 		cleanupDone:    make(chan struct{}),
 	}
 
-	go client.backgroundTasks()
+	go client.backgroundTasks(ctx)
 
 	go func() {
-		<-opt.Ctx.Done()
+		<-ctx.Done()
 		client.Close()
 	}()
 
@@ -102,7 +94,7 @@ func (h *rabbitmqClient) Close() error {
 	return nil
 }
 
-func (h *rabbitmqClient) backgroundTasks() {
+func (h *rabbitmqClient) backgroundTasks(ctx context.Context) {
 	cleanupTicker := time.NewTicker(replyQueueCleanupTicker)
 	healthTicker := time.NewTicker(publisherHealthInterval)
 
@@ -278,36 +270,38 @@ func (h *rabbitmqClient) ensureRPCReplyConsumer() error {
 			return
 		}
 
-		err = consumer.Run(func(d amqp.Delivery) amqp.Action {
-			if d.CorrelationId == sdk_cons.EMPTY {
-				return amqp.NackDiscard
-			}
-
-			if val, ok := h.requests.Load(d.CorrelationId); ok {
-				req := val.(*rpcRequest)
-
-				if req.closed.Load() {
-					return amqp.Ack
-				}
-
-				select {
-				case req.ch <- d.Body:
-					h.requests.Delete(d.CorrelationId)
-					return amqp.Ack
-				case <-time.After(1 * time.Second):
-					return amqp.Ack
-				}
-			}
-
-			return amqp.Ack
-		})
-
-		if err != nil {
-			h.consumerErr = fmt.Errorf("failed to create RPC reply consumer: %w", err)
-			return
-		}
-
 		h.rpcConsumer = consumer
+
+		go func() {
+			err := consumer.Run(func(d amqp.Delivery) amqp.Action {
+				if d.CorrelationId == sdk_cons.EMPTY {
+					return amqp.NackDiscard
+				}
+
+				if val, ok := h.requests.Load(d.CorrelationId); ok {
+					req := val.(*rpcRequest)
+
+					if req.closed.Load() {
+						return amqp.Ack
+					}
+
+					select {
+					case req.ch <- d.Body:
+						h.requests.Delete(d.CorrelationId)
+						return amqp.Ack
+					case <-time.After(1 * time.Second):
+						return amqp.Ack
+					}
+				}
+
+				return amqp.Ack
+			})
+
+			if err != nil {
+				fmt.Printf("RPC reply consumer stopped unexpectedly: %v\n", err)
+			}
+		}()
+
 		h.consumerReady.Store(true)
 	})
 

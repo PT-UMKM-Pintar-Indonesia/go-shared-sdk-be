@@ -5,4 +5,6 @@ type IRandom interface {
 	Numeric(length int) string
 	Secure(length int, charset string) (string, error)
 	Hex(length int) (string, error)
+	RandomNumericStr(length int) string
+	RandomItemStr(slice []string) string
 }
