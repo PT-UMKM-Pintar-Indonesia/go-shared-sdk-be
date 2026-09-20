@@ -6,24 +6,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 )
 
-type (
-	ICipher interface {
-		Base64Encode(plainText string) string
-		Base64Decode(cipherText string) (string, error)
-		EncodeRotation(plainText string) string
-		DecodeRotation(cipherText string) (string, error)
-		CaesarEncrypt(plainText string, rotation int) string
-		CaesarDecrypt(cipherText string, rotation int) string
-		RotateNumber(plainNumber string, shift int) string
-		DerotateNumber(cipherNumber string, shift int) string
-	}
+type cipher struct{}
 
-	cipher struct{}
-)
-
-func NewCipher() ICipher {
+func NewCipher() sdk_inf.ICipher {
 	return &cipher{}
 }
 

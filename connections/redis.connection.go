@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
-	"github.com/redis/go-redis/v9"
 )
 
 type Option func(*redis.Options)

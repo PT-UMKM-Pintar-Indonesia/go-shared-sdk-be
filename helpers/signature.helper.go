@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -84,8 +85,6 @@ func (h *signature) GenerateAsymmetric(req *sdk_dto.Asymmetric) (res sdk_opt.Sig
 }
 
 func (h *signature) GenerateSymmetric(req *sdk_dto.Symetric) (res sdk_opt.SignatureResponse) {
-	bodyHash := sha256.Sum256(req.Body)
-	bodyHashHex := strings.ToLower(hex.EncodeToString(bodyHash[:]))
 
 	var sb strings.Builder
 	sb.WriteString(req.Method)
@@ -94,7 +93,13 @@ func (h *signature) GenerateSymmetric(req *sdk_dto.Symetric) (res sdk_opt.Signat
 	sb.WriteString(":")
 	sb.WriteString(req.AccessToken)
 	sb.WriteString(":")
-	sb.WriteString(bodyHashHex)
+
+	if req.Method != http.MethodGet {
+		bodyHash := sha256.Sum256(req.Body)
+		bodyHashHex := strings.ToLower(hex.EncodeToString(bodyHash[:]))
+		sb.WriteString(bodyHashHex)
+	}
+
 	sb.WriteString(":")
 	sb.WriteString(req.TimeStamp)
 

@@ -8,8 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	"github.com/sirupsen/logrus"
+
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 )
 
 type (
@@ -222,7 +223,7 @@ func GenerateRandomVA(bankCode string) string {
 		n, err := randomInt(0, len(bankCodes)-1)
 
 		if err != nil {
-			logrus.Error(err)
+			logrus.Error(sdk_cons.ERROR, err)
 			return sdk_cons.EMPTY
 		}
 
@@ -231,19 +232,19 @@ func GenerateRandomVA(bankCode string) string {
 
 	customerNumLength, err := randomInt(10, 12)
 	if err != nil {
-		logrus.Error(err)
+		logrus.Error(sdk_cons.ERROR, err)
 		return sdk_cons.EMPTY
 	}
 
 	customerNumber, err := generateRandomDigits(customerNumLength)
 	if err != nil {
-		logrus.Error(err)
+		logrus.Error(sdk_cons.ERROR, err)
 		return sdk_cons.EMPTY
 	}
 
 	checkDigit, err := calculateCheckDigit(prefix + customerNumber)
 	if err != nil {
-		logrus.Error(err)
+		logrus.Error(sdk_cons.ERROR, err)
 		return sdk_cons.EMPTY
 	}
 

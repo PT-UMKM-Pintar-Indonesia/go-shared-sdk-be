@@ -10,7 +10,6 @@ import (
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -126,7 +125,7 @@ func (h *random) Hex(length int) (string, error) {
 	return res[:length], nil
 }
 
-func (h *random) RandomNumericStr(length int) string {
+func RandomNumericStr(length int) string {
 	var builder strings.Builder
 	builder.Grow(length)
 
@@ -135,7 +134,6 @@ func (h *random) RandomNumericStr(length int) string {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
 
 		if err != nil {
-			logrus.Error(err)
 			return sdk_cons.EMPTY
 		}
 
@@ -145,9 +143,11 @@ func (h *random) RandomNumericStr(length int) string {
 	return builder.String()
 }
 
-func (h *random) RandomItemStr(slice []string) string {
+func RandomItem[T any](slice []T) T {
+	var zeroValue T
+
 	if len(slice) == 0 {
-		return sdk_cons.EMPTY
+		return zeroValue
 	}
 
 	index := mr.Intn(len(slice))

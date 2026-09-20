@@ -8,6 +8,8 @@ var (
 
 const (
 	TIME_FORMAT_GMT7 = "2006-01-02T15:04:05+07:00"
+	DATE_TIME_FORMAT = "2006-01-02 15:04:05"
+	OK               = "200"
 
 	DEV  = "development"
 	STAG = "staging"
@@ -21,8 +23,6 @@ const (
 	InvalidUUID        = "00000000-0000-0000-0000-000000000000"
 	DEFAULT_ERR_MSG    = "API is busy please try again later!"
 	DEFAULT_TIME_VALUE = "0001-01-01T00:00:00Z"
-
-	DATE_TIME_FORMAT = "2006-01-02 15:04:05"
 
 	TRUE  = true
 	FALSE = false
