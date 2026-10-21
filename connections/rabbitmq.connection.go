@@ -33,9 +33,7 @@ func rabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) 
 		opt.FrameSize = DefaultFrameSize
 	}
 
-	if opt.Heartbeat < 1 {
-		opt.Heartbeat = DefaultHeartbeat
-	}
+	opt.Heartbeat = heartbeatDuration(opt.Heartbeat)
 
 	if opt.Timeout < 1 {
 		opt.Timeout = DefaultTimeout
@@ -56,7 +54,7 @@ func rabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) 
 		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
 			Dial:       dialer.Dial,
 			Vhost:      opt.Vhost,
-			Heartbeat:  time.Duration(opt.Heartbeat) * time.Second,
+			Heartbeat:  opt.Heartbeat,
 			FrameSize:  opt.FrameSize,
 			ChannelMax: opt.ChannelMax,
 			TLSClientConfig: &tls.Config{
@@ -79,9 +77,7 @@ func rabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, 
 		opt.FrameSize = DefaultFrameSize
 	}
 
-	if opt.Heartbeat < 1 {
-		opt.Heartbeat = DefaultHeartbeat
-	}
+	opt.Heartbeat = heartbeatDuration(opt.Heartbeat)
 
 	if opt.Timeout < 1 {
 		opt.Timeout = DefaultTimeout
@@ -102,7 +98,7 @@ func rabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, 
 		rabbitmq.WithConnectionOptionsConfig(rabbitmq.Config{
 			Dial:       dialer.Dial,
 			Vhost:      opt.Vhost,
-			Heartbeat:  time.Duration(opt.Heartbeat) * time.Second,
+			Heartbeat:  opt.Heartbeat,
 			FrameSize:  opt.FrameSize,
 			ChannelMax: opt.ChannelMax,
 			TLSClientConfig: &tls.Config{
@@ -112,7 +108,26 @@ func rabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, 
 	)
 }
 
+// heartbeatDuration accepts both a raw number of seconds (legacy behaviour)
+// and a real time.Duration value, so a configured 30s heartbeat is not
+// multiplied into an invalid (overflowed) value that the broker rejects.
+func heartbeatDuration(value time.Duration) time.Duration {
+	if value <= 0 {
+		return DefaultHeartbeat * time.Second
+	}
+
+	if value < time.Second {
+		return value * time.Second
+	}
+
+	return value
+}
+
 func RabbitMQConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) {
+	if opt == nil {
+		return nil, errors.New("rabbitmq options cannot be nil")
+	}
+
 	if len(opt.Urls) > 0 {
 		return rabbitConnectionCluster(opt)
 	}

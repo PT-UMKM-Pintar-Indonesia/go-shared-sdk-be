@@ -9,17 +9,20 @@ import (
 
 type (
 	RabbitClientOptions struct {
-		Ctx        context.Context
-		Url        string
-		Urls       []string
-		Vhost      string
-		Heartbeat  time.Duration
-		FrameSize  int
-		ChannelMax uint16
-		Secure     bool
-		Timeout    int
-		KeepAlive  int
-		Shuffle    bool
+		Ctx                 context.Context
+		Url                 string
+		Urls                []string
+		Vhost               string
+		Heartbeat           time.Duration
+		FrameSize           int
+		ChannelMax          uint16
+		Secure              bool
+		Timeout             int
+		KeepAlive           int
+		Shuffle             bool
+		RPCReplyPrefetch    int
+		RPCReplyConcurrency int
+		PublishTimeout      time.Duration
 	}
 
 	RabbitOptions struct {
@@ -41,6 +44,10 @@ type (
 		Delivery      rabbitmq.Delivery
 		Expired       string
 		Timeout       time.Duration
+		QueueArgs     rabbitmq.Table
+		ExchangeArgs  rabbitmq.Table
+		BindingKey    string
+		Headers       rabbitmq.Table
 	}
 
 	PublisherOptions struct {
