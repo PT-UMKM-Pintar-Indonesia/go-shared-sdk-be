@@ -65,16 +65,20 @@ func (h *transform) EnvToStruct(name, path, ext string, dest any) error {
 		return env.Parse(dest)
 	}
 
-	viper.SetConfigName(name)
-	viper.SetConfigType(ext)
-	viper.AddConfigPath(path)
-	viper.AutomaticEnv()
+	// Use a private viper instance instead of the package-level singleton:
+	// the global one leaks configuration between concurrent callers and
+	// is not safe for parallel use.
+	v := viper.New()
+	v.SetConfigName(name)
+	v.SetConfigType(ext)
+	v.AddConfigPath(path)
+	v.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		return env.Parse(dest)
 	}
 
-	return viper.Unmarshal(dest)
+	return v.Unmarshal(dest)
 }
 
 func (h *transform) MapToStruct(src map[string]any, dest any) error {

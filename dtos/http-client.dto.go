@@ -27,6 +27,5 @@ type (
 		Headers   map[string]string
 		Configs   HttpClientConfigs
 		Transport http.RoundTripper
-		standart  *http.Client
 	}
 )

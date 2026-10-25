@@ -28,9 +28,7 @@ func redisClient(ctx context.Context, opt *sdk_dto.RedisClientOptions) (*redis.C
 		options.MinIdleConns = 5
 	}
 
-	if opt.PoolFIFO {
-		options.PoolFIFO = false
-	}
+	options.PoolFIFO = opt.PoolFIFO
 
 	if opt.PoolTimeout < 1 {
 		options.PoolTimeout = 30 * time.Second
@@ -105,9 +103,7 @@ func redisSentinelClient(ctx context.Context, opt *sdk_dto.RedisClientOptions) (
 		options.MinIdleConns = 5
 	}
 
-	if opt.PoolFIFO {
-		options.PoolFIFO = false
-	}
+	options.PoolFIFO = opt.PoolFIFO
 
 	if opt.PoolTimeout < 1 {
 		options.PoolTimeout = 30 * time.Second

@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	goredis "github.com/redis/go-redis/v9"
+
 	sdk_con "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/connections"
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
-	goredis "github.com/redis/go-redis/v9"
 )
 
 type redis struct {

@@ -72,7 +72,6 @@ func (h *Date) StartOfDay() *Date {
 
 func (h *Date) EndOfDay() *Date {
 	t := h.Native
-	// Menggunakan 999,999,999 nanodetik untuk presisi akhir hari
 	return newDate(time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 999999999, t.Location()))
 }
 
@@ -81,16 +80,13 @@ func (h *Date) IsWeekend() bool {
 }
 
 func (h *Date) DaysInMonth() int {
-	// Trik: Tanggal 0 dari bulan berikutnya adalah hari terakhir bulan ini
 	return time.Date(h.Year, time.Month(h.Month+1), 0, 0, 0, 0, 0, h.Native.Location()).Day()
 }
 
-// Age dihitung berdasarkan perbandingan tanggal absolut
 func Age(birthYear, birthMonth, birthDay int) int {
 	now := time.Now()
 	age := now.Year() - birthYear
 
-	// Cek apakah ulang tahun sudah lewat di tahun ini
 	if now.Month() < time.Month(birthMonth) ||
 		(now.Month() == time.Month(birthMonth) && now.Day() < birthDay) {
 		age--
@@ -103,13 +99,16 @@ func ParseDate(layout, value string) (*Date, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return newDate(t), nil
 }
 
 func ParseInLocation(layout, value string, loc *time.Location) (*Date, error) {
 	t, err := time.ParseInLocation(layout, value, loc)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return newDate(t), nil
 }

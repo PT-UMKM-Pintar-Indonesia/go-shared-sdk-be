@@ -51,8 +51,15 @@ func (h *cryptoHelper) AES256Encrypt(secretKey, plainText string) (string, error
 		return "", fmt.Errorf("kdf failed: %w", err)
 	}
 
-	block, _ := aes.NewCipher(key)
-	gcm, _ := c.NewGCM(block)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher init failed: %w", err)
+	}
+
+	gcm, err := c.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("gcm init failed: %w", err)
+	}
 
 	nonce, err := h.GenerateRandomBytes(gcm.NonceSize())
 	if err != nil {
@@ -67,7 +74,8 @@ func (h *cryptoHelper) AES256Encrypt(secretKey, plainText string) (string, error
 
 func (h *cryptoHelper) AES256Decrypt(secretKey, cipherTextHex string) (string, error) {
 	data, err := hex.DecodeString(cipherTextHex)
-	if err != nil || len(data) < saltLen+12 { // 16 (salt) + 12 (nonce)
+
+	if err != nil || len(data) < saltLen+12 {
 		return "", errors.New("invalid ciphertext format")
 	}
 
@@ -77,8 +85,15 @@ func (h *cryptoHelper) AES256Decrypt(secretKey, cipherTextHex string) (string, e
 		return "", err
 	}
 
-	block, _ := aes.NewCipher(key)
-	gcm, _ := c.NewGCM(block)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher init failed: %w", err)
+	}
+
+	gcm, err := c.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("gcm init failed: %w", err)
+	}
 
 	nonceSize := gcm.NonceSize()
 	if len(encryptedPayload) < nonceSize {
@@ -86,6 +101,7 @@ func (h *cryptoHelper) AES256Decrypt(secretKey, cipherTextHex string) (string, e
 	}
 
 	nonce, ciphertext := encryptedPayload[:nonceSize], encryptedPayload[nonceSize:]
+
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return "", fmt.Errorf("decryption failed: %w", err)
@@ -105,8 +121,15 @@ func (h *cryptoHelper) AES256EncryptWithSalt(secretKey, plainText, saltHex strin
 		return "", err
 	}
 
-	block, _ := aes.NewCipher(key)
-	gcm, _ := c.NewGCM(block)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher init failed: %w", err)
+	}
+
+	gcm, err := c.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("gcm init failed: %w", err)
+	}
 
 	nonce, err := h.GenerateRandomBytes(gcm.NonceSize())
 	if err != nil {

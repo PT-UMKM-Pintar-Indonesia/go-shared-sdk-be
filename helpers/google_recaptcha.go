@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"slices" // Go 1.21+
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -70,10 +70,15 @@ type (
 		rateWindow    time.Duration
 		requestCounts map[string][]time.Time
 		stopCleanup   chan struct{}
+		closeOnce     sync.Once
 	}
 )
 
 func NewGoogleRecaptcha(config *Config) (*Client, error) {
+	if config == nil {
+		return nil, errors.New("recaptcha config cannot be nil")
+	}
+
 	if config.Secret == "" {
 		return nil, errors.New("secret key is required")
 	}
@@ -245,6 +250,8 @@ func (r *Response) ValidateV3(minScore float64, expectedActions, expectedHosts [
 }
 
 func (c *Client) Close() {
-	close(c.stopCleanup)
-	c.httpClient.CloseIdleConnections()
+	c.closeOnce.Do(func() {
+		close(c.stopCleanup)
+		c.httpClient.CloseIdleConnections()
+	})
 }

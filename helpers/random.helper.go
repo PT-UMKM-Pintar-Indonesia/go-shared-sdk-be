@@ -29,35 +29,20 @@ func (h *random) generate(length int, charset string) (string, error) {
 		return "", nil
 	}
 
+	if len(charset) == 0 {
+		return "", errors.New("charset cannot be empty")
+	}
+
+	max := big.NewInt(int64(len(charset)))
 	var sb strings.Builder
 	sb.Grow(length)
 
-	chLen := len(charset)
-	mask := uint64(1)<<6 - 1
-	if chLen > 64 {
-		mask = uint64(1)<<7 - 1
-	}
-
-	buffer := make([]byte, length+(length/4))
-	if _, err := rand.Read(buffer); err != nil {
-		return "", err
-	}
-
-	idx := 0
 	for sb.Len() < length {
-		if idx >= len(buffer) {
-			buffer = make([]byte, length-sb.Len())
-			if _, err := rand.Read(buffer); err != nil {
-				return "", err
-			}
-			idx = 0
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", err
 		}
-
-		val := int(uint64(buffer[idx]) & mask)
-		if val < chLen {
-			sb.WriteByte(charset[val])
-		}
-		idx++
+		sb.WriteByte(charset[n.Int64()])
 	}
 
 	return sb.String(), nil

@@ -3,7 +3,7 @@ package sdk_helper
 import "strings"
 
 const (
-	DefaultMaxLogLength = 2048
+	DefaultMaxLogLength = 1024
 	TruncatedSuffix     = "...[truncated]"
 )
 
@@ -14,6 +14,10 @@ func TrimLogString(s string) string {
 func TrimLogStringWithMax(s string, maxLen int) string {
 	if maxLen <= 0 {
 		maxLen = DefaultMaxLogLength
+	}
+
+	if len(s) <= maxLen {
+		return s
 	}
 
 	runes := []rune(s)

@@ -8,16 +8,17 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"math"
+	"math/big"
 	"sync"
 	"time"
+
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
 	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
 	sdk_inf "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/interfaces"
 	sdk_dro "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
-	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 type jsonWebToken struct {
@@ -180,7 +181,13 @@ func (p *jsonWebToken) Sign(prefix string, body any) (*sdk_dro.SignMetadata, err
 	aud := signature.SigKey[10:20]
 	iss := signature.SigKey[30:40]
 	sub := signature.SigKey[50:60]
-	suffix := int(math.Pow(float64(p.env.JWT.EXPIRED), float64(len(aud)+len(iss)+len(sub))))
+
+	exp := int64(len(aud) + len(iss) + len(sub))
+	suffix := new(big.Int).Exp(
+		big.NewInt(int64(p.env.JWT.EXPIRED)),
+		big.NewInt(exp),
+		big.NewInt(1_000_000_000_000_000_000),
+	).Int64()
 
 	secretKey := fmt.Sprintf("%s:%s:%s:%s:%d", aud, iss, sub, timestamp, suffix)
 	secretData := hex.EncodeToString([]byte(secretKey))

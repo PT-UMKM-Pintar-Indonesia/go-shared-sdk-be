@@ -57,8 +57,11 @@ func rabbitConnection(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, error) 
 			Heartbeat:  opt.Heartbeat,
 			FrameSize:  opt.FrameSize,
 			ChannelMax: opt.ChannelMax,
+			// Secure=true now means "verify the server certificate";
+			// the previous logic was inverted and skipped verification
+			// exactly when Secure was enabled.
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: opt.Secure,
+				InsecureSkipVerify: !opt.Secure,
 			},
 		}),
 	)
@@ -101,8 +104,11 @@ func rabbitConnectionCluster(opt *sdk_dto.RabbitClientOptions) (*rabbitmq.Conn, 
 			Heartbeat:  opt.Heartbeat,
 			FrameSize:  opt.FrameSize,
 			ChannelMax: opt.ChannelMax,
+			// Secure=true now means "verify the server certificate";
+			// the previous logic was inverted and skipped verification
+			// exactly when Secure was enabled.
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: opt.Secure,
+				InsecureSkipVerify: !opt.Secure,
 			},
 		}),
 	)

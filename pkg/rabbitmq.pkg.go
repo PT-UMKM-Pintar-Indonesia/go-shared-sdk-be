@@ -1014,8 +1014,6 @@ func (h *rabbitmqClient) PublisherRPC(req *sdk_dto.RabbitOptions) ([]byte, error
 		return nil, errClientClosed
 	}
 
-	// The reply queue must exist before the request is published, otherwise the
-	// broker silently drops the reply (unroutable message).
 	if err := h.ensureReplyConsumer(); err != nil {
 		return nil, err
 	}

@@ -1,7 +1,10 @@
 package sdk_helper
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +23,20 @@ func (w *sizeWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	w.size += int64(n)
 	return n, err
+}
+
+func (w *sizeWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (w *sizeWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+
+	return nil, nil, errors.New("underlying ResponseWriter does not support hijacking")
 }
 
 func formatBytes(size int64) string {
@@ -109,7 +126,7 @@ func buildResponse(options sdk_opt.Response, r *http.Request, start time.Time) s
 	}
 
 	errMsg := options.ErrMsg
-	if errMsg == "" {
+	if errMsg == sdk_cons.EMPTY {
 		errMsg = sdk_cons.DEFAULT_ERR_MSG
 	}
 
@@ -138,9 +155,5 @@ func writeResponse(sw *sizeWriter, parser sdk_inf.IParser, response sdk_opt.Resp
 	sw.Header().Set("Content-Type", "application/json")
 	sw.WriteHeader(int(response.StatCode))
 
-	if err := parser.Encode(sw, response); err != nil {
-		return
-	}
-
-	response.Info.ResponseSize = formatBytes(sw.size)
+	_ = parser.Encode(sw, response)
 }

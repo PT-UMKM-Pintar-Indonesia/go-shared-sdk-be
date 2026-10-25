@@ -146,8 +146,6 @@ func (h *MapObjectSafe[K, V]) String() string {
 	return sb.String()
 }
 
-// TODO: map object unsafe use package
-
 func NewMapObjectUnSafe[K comparable, V any](initial map[K]V) *MapObjectUnSafe[K, V] {
 	data := make(map[K]V, len(initial))
 	for k, v := range initial {

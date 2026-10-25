@@ -2,6 +2,7 @@ package sdk_pkg
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,64 +12,86 @@ import (
 	sdk_helper "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/helpers"
 )
 
-func Logrus(Type string, Msg any, Args ...any) {
-	format := false
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:     true,
-		TimestampFormat: time.RFC3339,
+var logrusFormatterOnce sync.Once
+
+func logrusArgs(a any) []any {
+	if args, ok := a.([]any); ok {
+		return args
+	}
+	return []any{a}
+}
+
+func applyDefaultFormatter() {
+	logrusFormatterOnce.Do(func() {
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:     true,
+			TimestampFormat: time.RFC3339,
+		})
 	})
+}
+
+func Logrus(Type string, Msg any, Args ...any) {
+	applyDefaultFormatter()
+
+	var (
+		format  bool
+		msgText string
+	)
 
 	if Args != nil {
-		format = true
+		if s, ok := Msg.(string); ok {
+			msgText = s
+			format = true
+		}
 	}
 
 	switch Type {
 
 	case sdk_cons.INFO:
 		if format {
-			logrus.Infof(Msg.(string), Args...)
+			logrus.Infof(msgText, Args...)
 		} else {
 			logrus.Info(Msg)
 		}
 
 	case sdk_cons.ERROR:
 		if format {
-			logrus.Errorf(Msg.(string), Args...)
+			logrus.Errorf(msgText, Args...)
 		} else {
 			logrus.Error(Msg)
 		}
 
 	case sdk_cons.PRINT:
 		if format {
-			logrus.Printf(Msg.(string), Args...)
+			logrus.Printf(msgText, Args...)
 		} else {
 			logrus.Print(Msg)
 		}
 
 	case sdk_cons.FATAL:
 		if format {
-			logrus.Fatalf(Msg.(string), Args...)
+			logrus.Fatalf(msgText, Args...)
 		} else {
 			logrus.Fatal(Msg)
 		}
 
 	case sdk_cons.DEBUG:
 		if format {
-			logrus.Debugf(Msg.(string), Args...)
+			logrus.Debugf(msgText, Args...)
 		} else {
 			logrus.Debug(Msg)
 		}
 
 	case sdk_cons.PANIC:
 		if format {
-			logrus.Panicf(Msg.(string), Args...)
+			logrus.Panicf(msgText, Args...)
 		} else {
 			logrus.Panic(Msg)
 		}
 
 	case sdk_cons.TRACE:
 		if format {
-			logrus.Tracef(Msg.(string), Args...)
+			logrus.Tracef(msgText, Args...)
 		} else {
 			logrus.Trace(Msg)
 		}
@@ -115,56 +138,56 @@ func LogrusCustomLogger(req *sdk_dto.LogrusCustomLogger) ([]byte, error) {
 
 	case sdk_cons.WARN:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Warnf(req.CustomMessage, req.Args)
+			lg.Warnf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Warn(req.Args)
 		}
 
 	case sdk_cons.TRACE:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Tracef(req.CustomMessage, req.Args)
+			lg.Tracef(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Trace(req.Args)
 		}
 
 	case sdk_cons.DEBUG:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Debugf(req.CustomMessage, req.Args)
+			lg.Debugf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Debug(req.Args)
 		}
 
 	case sdk_cons.ERROR:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Errorf(req.CustomMessage, req.Args)
+			lg.Errorf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Error(req.Args)
 		}
 
 	case sdk_cons.INFO:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Infof(req.CustomMessage, req.Args)
+			lg.Infof(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Info(req.Args)
 		}
 
 	case sdk_cons.PANIC:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Panicf(req.CustomMessage, req.Args)
+			lg.Panicf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Panic(req.Args)
 		}
 
 	case sdk_cons.FATAL:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Fatalf(req.CustomMessage, req.Args)
+			lg.Fatalf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Fatal(req.Args)
 		}
 
 	default:
 		if req.CustomMessage != sdk_cons.EMPTY && req.Args != nil {
-			lg.Printf(req.CustomMessage, req.Args)
+			lg.Printf(req.CustomMessage, logrusArgs(req.Args)...)
 		} else {
 			lg.Println(req.Args)
 		}

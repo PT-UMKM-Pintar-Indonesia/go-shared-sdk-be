@@ -1,8 +1,10 @@
 package sdk_helper
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math"
+	"math/big"
 	"regexp"
 	"time"
 )
@@ -27,10 +29,20 @@ func Generate(prefix string) string {
 		prefix = "OTC"
 	}
 
-	now := time.Now()
-	month := fmt.Sprintf("%02d", int(now.Month()))
-	day := fmt.Sprintf("%02d", now.Day())
-	baseCode := prefix + month + day
+	digits := make([]byte, 4)
+	for i := range digits {
+		n, err := rand.Int(rand.Reader, big.NewInt(10))
+
+		if err != nil {
+			now := time.Now()
+			digits = []byte(fmt.Sprintf("%02d%02d", int(now.Month()), now.Day()))
+			break
+		}
+
+		digits[i] = byte('0' + n.Int64())
+	}
+
+	baseCode := prefix + string(digits)
 
 	checksum := generateChecksum(baseCode)
 

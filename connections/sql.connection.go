@@ -72,6 +72,7 @@ func sqlConnectionWithConfig(ctx context.Context, appName, driver string, env *s
 	defer cancel()
 
 	if err = db.PingContext(pingCtx); err != nil {
+		db.Close()
 		return nil, err
 	}
 

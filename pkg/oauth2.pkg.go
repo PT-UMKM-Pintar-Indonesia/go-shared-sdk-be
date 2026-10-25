@@ -1,6 +1,7 @@
 package sdk_pkg
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -43,6 +44,10 @@ func (p *oauth2) Server(manager *manage.Manager) *server.Server {
 }
 
 func (p *oauth2) GenerateClientCredentials(req *sdk_dto.GenerateClientCredentialsOptions) (goauth2.TokenInfo, error) {
+	if req == nil || req.Manager == nil || req.ClientStore == nil {
+		return nil, errors.New("oauth2: manager and client store are required")
+	}
+
 	manager := req.Manager
 	client := req.ClientStore
 
@@ -66,6 +71,10 @@ func (p *oauth2) GenerateClientCredentials(req *sdk_dto.GenerateClientCredential
 }
 
 func (p *oauth2) GenerateServerClientCredentials(req *sdk_dto.GenerateServerClientCredentialsOptions) (goauth2.TokenInfo, *server.Server, error) {
+	if req == nil || req.Manager == nil || req.ClientStore == nil {
+		return nil, nil, errors.New("oauth2: manager and client store are required")
+	}
+
 	manager := req.Manager
 	client := req.ClientStore
 
@@ -115,6 +124,9 @@ func (p *oauth2) GenerateServerClientCredentials(req *sdk_dto.GenerateServerClie
 }
 
 func (p *oauth2) LoadAccessToken(req *sdk_dto.LoadAccessTokenOptions) (goauth2.TokenInfo, error) {
-	server := req.Server
-	return server.Manager.LoadAccessToken(req.Ctx, req.Token)
+	if req == nil || req.Server == nil || req.Server.Manager == nil {
+		return nil, errors.New("oauth2: server with manager is required")
+	}
+
+	return req.Server.Manager.LoadAccessToken(req.Ctx, req.Token)
 }

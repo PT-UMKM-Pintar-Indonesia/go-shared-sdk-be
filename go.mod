@@ -5,6 +5,7 @@ go 1.26.7
 require (
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/rabbitmq/amqp091-go v1.12.0
 	github.com/wagslane/go-rabbitmq v0.16.0
 	golang.org/x/crypto v0.49.0
 )
@@ -28,7 +29,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
-	github.com/rabbitmq/amqp091-go v1.12.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

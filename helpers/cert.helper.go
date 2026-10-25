@@ -23,6 +23,11 @@ func NewCert() sdk_inf.ICert {
 }
 
 func (h *cert) GenerateKey(req *sdk_dto.GeneratePrivateKey) (res sdk_opt.CertResponse) {
+	if req == nil {
+		res.Error = errors.New("generate key request cannot be nil")
+		return
+	}
+
 	if req.KeySize < 2048 {
 		res.Error = errors.New("security risk: key size must be at least 2048 bits")
 		return
@@ -46,6 +51,10 @@ func (h *cert) GenerateKey(req *sdk_dto.GeneratePrivateKey) (res sdk_opt.CertRes
 
 	if req.Password != "" {
 		block, _ := pem.Decode(privRes.KeyRawPrivate)
+		if block == nil {
+			res.Error = errors.New("failed to decode generated PEM block")
+			return
+		}
 
 		encBlock, err := x509.EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(req.Password), x509.PEMCipherAES256)
 		if err != nil {

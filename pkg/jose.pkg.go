@@ -3,6 +3,8 @@ package sdk_pkg
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -41,7 +43,9 @@ func (p *jose) JweEncrypt(publicKey *rsa.PublicKey, plainText string) ([]byte, *
 	jweEncryptMetadataRes := new(sdk_dro.JweEncryptMetadata)
 
 	headers := jwe.NewHeaders()
-	headers.Set("sig", plainText)
+
+	sigHash := sha256.Sum256([]byte(plainText))
+	headers.Set("sig", hex.EncodeToString(sigHash[:]))
 	headers.Set("alg", jwa.RSA_OAEP_512().String())
 	headers.Set("enc", jwa.A256GCM().String())
 
@@ -157,6 +161,10 @@ func (p *jose) ExportJsonWebKey(privateKey *rsa.PrivateKey) (*sdk_dro.JwkMetadat
 }
 
 func (p *jose) JwtSign(opt *sdk_dto.JwtSignOption) ([]byte, error) {
+	if opt == nil || opt.PrivateKey == nil {
+		return nil, errors.New("jwt sign: options and private key are required")
+	}
+
 	jwsHeader := jws.NewHeaders()
 	jwsHeader.Set("alg", jwa.RS512)
 	jwsHeader.Set("typ", "JWT")

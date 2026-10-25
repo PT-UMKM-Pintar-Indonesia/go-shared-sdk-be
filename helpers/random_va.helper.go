@@ -132,6 +132,11 @@ func (h *VAGenerator) Generate(bank BankType, customerID string) (string, error)
 	cleanLen := 0
 	for i := 0; i < len(customerID); i++ {
 		if customerID[i] >= '0' && customerID[i] <= '9' {
+			if cleanLen == len(buf) {
+				copy(buf, buf[1:])
+				cleanLen--
+			}
+
 			buf[cleanLen] = customerID[i]
 			cleanLen++
 		}

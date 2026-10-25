@@ -39,12 +39,22 @@ type (
 func NewEnigma() IEnigma {
 	r1W := "EKMFLGDQVZNTOWYHXUSPAIBRCJ"
 	r2W := "AJDKSIRUXBLHWTMCQGZNPYFVOE"
-	r3W := "BDFHJLCPRTXVZNYEIWGAKMU SQO"
+	r3W := "BDFHJLCPRTXVZNYEIWGAKMUSQO"
 	refW := "YRUHQSLDPXNGOKMIEBFZCWVJAT"
 
 	createRotor := func(w string) *rotor {
+		if len(w) != 26 {
+			panic("enigma: rotor wiring must be exactly 26 letters")
+		}
+
 		r := &rotor{}
+		seen := map[byte]bool{}
+
 		for i := 0; i < 26; i++ {
+			if w[i] < 'A' || w[i] > 'Z' || seen[w[i]] {
+				panic("enigma: rotor wiring must be a permutation of A-Z")
+			}
+			seen[w[i]] = true
 			r.forward[i] = w[i]
 			r.backward[w[i]-'A'] = byte(i + 'A')
 		}
