@@ -21,80 +21,146 @@ import (
 	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
-const (
-	defaultHTTPTimeout = 15 * time.Second
-	maxResponseSize    = 5 * 1024 * 1024
-	errorDrainLimit    = 64 * 1024
+type requestPolicy struct {
+	perAttempt     time.Duration
+	budget         time.Duration
+	retryMax       int
+	retryWaitMin   time.Duration
+	retryWaitMax   time.Duration
+	idempotent     bool
+	retryOnTimeout bool
+	logRequests    bool
+}
 
-	defaultRetryMax     = 3
-	defaultRetryWaitMin = 1 * time.Second
-	defaultRetryWaitMax = 3 * time.Second
+func resolvePolicy(options *sdk_dto.HttpClientOptions) requestPolicy {
+	tune := httpTuningConfig()
 
-	logBodyPreviewLimit = 1024
-)
+	policy := requestPolicy{
+		perAttempt:     tune.timeout,
+		retryMax:       defaultRetryMax,
+		retryWaitMin:   defaultRetryWaitMin,
+		retryWaitMax:   defaultRetryWaitMax,
+		idempotent:     isIdempotentMethod(options.Method) || hasIdempotencyKey(options.Headers),
+		retryOnTimeout: tune.retryOnTimeout,
+		logRequests:    tune.logRequests,
+	}
+
+	if options.Configs.Timeout > 0 {
+		policy.perAttempt = options.Configs.Timeout
+	}
+
+	switch {
+	case options.Configs.RetryMax > 0:
+		policy.retryMax = options.Configs.RetryMax
+	case options.Configs.RetryMax < 0:
+		policy.retryMax = 0
+	}
+
+	if options.Configs.RetryWaitMin > 0 {
+		policy.retryWaitMin = options.Configs.RetryWaitMin
+	}
+
+	if options.Configs.RetryWaitMax > 0 {
+		policy.retryWaitMax = options.Configs.RetryWaitMax
+	}
+
+	if options.Configs.RetryOnTimeout {
+		policy.retryOnTimeout = true
+	}
+
+	if options.Configs.LogRequests {
+		policy.logRequests = true
+	}
+
+	policy.budget = options.Configs.Budget
+	if policy.budget <= 0 {
+		policy.budget = tune.budget
+	}
+
+	if policy.budget <= 0 {
+		policy.budget = policy.perAttempt
+	}
+
+	if policy.budget < policy.perAttempt {
+		policy.budget = policy.perAttempt
+	}
+
+	if policy.budget > maxHTTPBudget {
+		policy.budget = maxHTTPBudget
+	}
+
+	return policy
+}
+
+func isIdempotentMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+		return true
+	}
+
+	return false
+}
+
+func hasIdempotencyKey(headers map[string]string) bool {
+	for key := range headers {
+		switch strings.ToLower(strings.TrimSpace(key)) {
+		case "idempotency-key", "x-idempotency-key":
+			return true
+		}
+	}
+
+	return false
+}
 
 var (
-	sharedHTTPClient *http.Client
-	initOnce         sync.Once
+	sharedTransport *http.Transport
+	transportOnce   sync.Once
 )
 
-func getSharedHTTPClient() *http.Client {
-	initOnce.Do(func() {
-		transport := &http.Transport{
+func getSharedTransport() *http.Transport {
+	transportOnce.Do(func() {
+		tune := httpTuningConfig()
+
+		sharedTransport = &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          400,
-			MaxIdleConnsPerHost:   200,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
+			MaxIdleConns:          tune.maxIdleConns,
+			MaxIdleConnsPerHost:   tune.maxIdleConnsPerHost,
+			MaxConnsPerHost:       tune.maxConnsPerHost,
+			IdleConnTimeout:       tune.idleConnTimeout,
+			TLSHandshakeTimeout:   tune.tlsHandshakeTimeout,
+			ResponseHeaderTimeout: tune.responseHeaderTimeout,
 			ExpectContinueTimeout: 1 * time.Second,
 			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
+				Timeout:   tune.connectTimeout,
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
 		}
-
-		sharedHTTPClient = &http.Client{
-			Transport: transport,
-			Timeout:   defaultHTTPTimeout,
-		}
 	})
 
-	return sharedHTTPClient
+	return sharedTransport
 }
 
-func newRetryClient(options *sdk_dto.HttpClientOptions) *retryablehttp.Client {
-	httpClient := getSharedHTTPClient()
-	if options.Transport != nil {
-		httpClient = &http.Client{
-			Transport: options.Transport,
-			Timeout:   defaultHTTPTimeout,
-		}
+func httpClientFor(transport http.RoundTripper, perAttempt time.Duration) *http.Client {
+	if transport == nil {
+		transport = getSharedTransport()
 	}
 
+	return &http.Client{Transport: transport, Timeout: perAttempt}
+}
+
+func newRetryClient(options *sdk_dto.HttpClientOptions, policy requestPolicy) *retryablehttp.Client {
 	client := &retryablehttp.Client{
-		HTTPClient:      httpClient,
-		RetryMax:        defaultRetryMax,
-		RetryWaitMin:    defaultRetryWaitMin,
-		RetryWaitMax:    defaultRetryWaitMax,
+		HTTPClient:      httpClientFor(options.Transport, policy.perAttempt),
+		RetryMax:        policy.retryMax,
+		RetryWaitMin:    policy.retryWaitMin,
+		RetryWaitMax:    policy.retryWaitMax,
 		Backoff:         retryablehttp.DefaultBackoff,
-		CheckRetry:      defaultCheckRetry(options.Method),
+		CheckRetry:      newCheckRetry(policy),
 		ErrorHandler:    retryablehttp.PassthroughErrorHandler,
 		Logger:          nil,
-		RequestLogHook:  logRequestHook,
-		ResponseLogHook: logResponseHook,
-	}
-
-	if options.Configs.RetryWaitMin != 0 {
-		client.RetryWaitMin = options.Configs.RetryWaitMin
-	}
-
-	if options.Configs.RetryWaitMax != 0 {
-		client.RetryWaitMax = options.Configs.RetryWaitMax
-	}
-
-	if options.Configs.RetryMax != 0 {
-		client.RetryMax = options.Configs.RetryMax
+		RequestLogHook:  newRequestLogHook(policy.logRequests),
+		ResponseLogHook: newResponseLogHook(policy.logRequests),
 	}
 
 	if options.Configs.Backoff != nil {
@@ -116,49 +182,100 @@ func newRetryClient(options *sdk_dto.HttpClientOptions) *retryablehttp.Client {
 	return client
 }
 
-func logRequestHook(_ retryablehttp.Logger, r *http.Request, attempt int) {
-	logrus.WithFields(logrus.Fields{
-		"namespace": "http_client",
-		"url":       r.URL.String(),
-		"method":    r.Method,
-		"attempt":   attempt,
-	}).Info("LOG_WORKER_HTTP_REQUEST")
-}
+func newRequestLogHook(verbose bool) retryablehttp.RequestLogHook {
+	return func(_ retryablehttp.Logger, r *http.Request, attempt int) {
+		entry := logrus.WithFields(logrus.Fields{
+			"namespace": "http_client",
+			"url":       redactURL(r.URL),
+			"method":    r.Method,
+			"attempt":   attempt,
+		})
 
-func logResponseHook(_ retryablehttp.Logger, r *http.Response) {
-	var (
-		url    string
-		method string
-	)
-	if r.Request != nil {
-		url = r.Request.URL.String()
-		method = r.Request.Method
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"namespace":   "http_client",
-		"url":         url,
-		"method":      method,
-		"status_code": r.StatusCode,
-	}).Info("LOG_WORKER_HTTP_RESPONSE")
-}
-
-func defaultCheckRetry(method string) retryablehttp.CheckRetry {
-	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		switch method {
-		case http.MethodGet, http.MethodHead, http.MethodOptions:
-			return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+		if verbose {
+			entry.Info("LOG_WORKER_HTTP_REQUEST")
+			return
 		}
 
+		entry.Debug("LOG_WORKER_HTTP_REQUEST")
+	}
+}
+
+func newResponseLogHook(verbose bool) retryablehttp.ResponseLogHook {
+	return func(_ retryablehttp.Logger, r *http.Response) {
+		var (
+			url    string
+			method string
+		)
+		if r.Request != nil {
+			url = redactURL(r.Request.URL)
+			method = r.Request.Method
+		}
+
+		entry := logrus.WithFields(logrus.Fields{
+			"namespace":   "http_client",
+			"url":         url,
+			"method":      method,
+			"status_code": r.StatusCode,
+		})
+
+		if verbose || r.StatusCode >= http.StatusInternalServerError {
+			entry.Info("LOG_WORKER_HTTP_RESPONSE")
+			return
+		}
+
+		entry.Debug("LOG_WORKER_HTTP_RESPONSE")
+	}
+}
+
+func redactURL(u *url.URL) string {
+	if u == nil {
+		return sdk_cons.EMPTY
+	}
+
+	clone := *u
+	clone.User = nil
+	clone.RawQuery = sdk_cons.EMPTY
+	clone.Fragment = sdk_cons.EMPTY
+
+	return clone.String()
+}
+
+func redactURLString(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+
+	return redactURL(parsed)
+}
+
+func newCheckRetry(policy requestPolicy) retryablehttp.CheckRetry {
+	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
 		if ctx.Err() != nil {
 			return false, ctx.Err()
 		}
 
-		if err == nil {
+		if err != nil {
+			if isPreWriteNetworkError(err) {
+				return true, nil
+			}
+
+			if policy.idempotent {
+				if isTimeoutError(err) && !policy.retryOnTimeout {
+					return false, nil
+				}
+
+				return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+			}
+
 			return false, nil
 		}
 
-		if isPreWriteNetworkError(err) {
+		if resp == nil {
+			return false, nil
+		}
+
+		if policy.idempotent && resp.StatusCode >= http.StatusInternalServerError {
 			return true, nil
 		}
 
@@ -167,6 +284,10 @@ func defaultCheckRetry(method string) retryablehttp.CheckRetry {
 }
 
 func isPreWriteNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
 		return true
@@ -177,12 +298,21 @@ func isPreWriteNetworkError(err error) bool {
 		return true
 	}
 
+	if strings.Contains(strings.ToLower(err.Error()), "tls handshake timeout") {
+		return true
+	}
+
 	return false
 }
 
 func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
+	if options == nil {
+		return httpClientError(ErrOptionsRequired)
+	}
+
 	parser := NewParser()
-	client := newRetryClient(options)
+	policy := resolvePolicy(options)
+	client := newRetryClient(options, policy)
 
 	var bodyReader io.Reader
 	switch v := options.Body.(type) {
@@ -221,12 +351,12 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 			if form, ok := toFormValues(v); ok {
 				bodyReader = strings.NewReader(form.Encode())
 			} else {
-				logrus.Warnf("NewHttpClient: body %T is not form-encodable for %s; sending fmt %%v representation", v, options.Url)
+				logrus.Warnf("NewHttpClient: body %T is not form-encodable for %s; sending fmt %%v representation", v, redactURLString(options.Url))
 				bodyReader = strings.NewReader(fmt.Sprintf("%v", v))
 			}
 
 		default:
-			logrus.Warnf("NewHttpClient: body %T serialized via fmt %%v for %s (no JSON Content-Type set)", v, options.Url)
+			logrus.Warnf("NewHttpClient: body %T serialized via fmt %%v for %s (no JSON Content-Type set)", v, redactURLString(options.Url))
 			bodyReader = strings.NewReader(fmt.Sprintf("%v", v))
 		}
 	}
@@ -236,11 +366,8 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 		ctx = context.Background()
 	}
 
-	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, defaultHTTPTimeout)
-		defer cancel()
-	}
+	ctx, cancel := context.WithTimeout(ctx, policy.budget)
+	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, options.Method, options.Url, bodyReader)
 	if err != nil {
@@ -277,14 +404,14 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	}
 
 	if len(bodyBytes) > maxResponseSize {
-		bodyBytes = bodyBytes[:maxResponseSize]
-		logrus.Warnf("HTTP Response truncated: exceeded %d bytes limit for URL: %s", maxResponseSize, options.Url)
+		logrus.Warnf("HTTP Response exceeded %d bytes limit for URL: %s", maxResponseSize, redactURLString(options.Url))
+		return httpClientError(ErrResponseTooLarge)
 	}
 
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		logrus.WithFields(logrus.Fields{
 			"namespace":        "http_client",
-			"url":              options.Url,
+			"url":              redactURLString(options.Url),
 			"method":           options.Method,
 			"status_code":      httpRes.StatusCode,
 			"response_preview": TrimLogStringWithMax(string(bodyBytes), logBodyPreviewLimit),
@@ -330,39 +457,47 @@ func httpClientError(err error) (res sdk_opt.Response) {
 		return
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) || isTimeoutError(err) {
+	switch {
+	case errors.Is(err, ErrOptionsRequired):
+		res.StatCode = http.StatusBadRequest
+		res.ErrMsg = err.Error()
+
+	case errors.Is(err, context.DeadlineExceeded) || isTimeoutError(err):
 		res.StatCode = http.StatusGatewayTimeout
-		res.ErrMsg = err.Error()
+		res.ErrCode = sdk_cons.SNAP_REQUEST_TIMEOUT
+		res.ErrMsg = fmt.Sprintf("%s: %v: %v", upstreamFailurePrefix, ErrUpstreamTimeout, err)
 
-		return
-	}
-
-	if errors.Is(err, context.Canceled) {
+	case errors.Is(err, context.Canceled):
 		res.StatCode = http.StatusRequestTimeout
-		res.ErrMsg = err.Error()
+		res.ErrMsg = fmt.Sprintf("%s: %v: %v", upstreamFailurePrefix, ErrUpstreamCanceled, err)
 
-		return
-	}
-
-	var netErr *net.OpError
-	if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) || errors.Is(err, net.ErrWriteToConnected) {
+	case errors.Is(err, ErrResponseTooLarge):
 		res.StatCode = http.StatusBadGateway
-		res.ErrMsg = err.Error()
+		res.ErrMsg = fmt.Sprintf("%s: %v", upstreamFailurePrefix, err)
+		res.Message = res.ErrMsg
 
-		return
-	}
+	default:
+		var netErr *net.OpError
+		if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) || errors.Is(err, net.ErrWriteToConnected) {
+			res.StatCode = http.StatusBadGateway
+			res.ErrMsg = fmt.Sprintf("%s: %v: %v", upstreamFailurePrefix, ErrUpstreamNetwork, err)
 
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, io.ErrNoProgress) {
-		res.StatCode = http.StatusBadGateway
+			return
+		}
+
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, io.ErrNoProgress) {
+			res.StatCode = http.StatusBadGateway
+			res.ErrMsg = fmt.Sprintf("%s: %v: %v", upstreamFailurePrefix, ErrUpstreamNetwork, err)
+			res.Message = res.ErrMsg
+
+			return
+		}
+
+		res.StatCode = http.StatusBadRequest
 		res.ErrMsg = err.Error()
 		res.Message = err.Error()
-
-		return
 	}
 
-	res.StatCode = http.StatusBadRequest
-	res.ErrMsg = err.Error()
-	res.Message = err.Error()
 	return
 }
 

@@ -17,7 +17,9 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/sirupsen/logrus"
 
+	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
 	sdk_dto "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/dtos"
+	sdk_opt "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/outputs"
 )
 
 func TestMain(m *testing.M) {
@@ -203,7 +205,7 @@ func TestNewHttpClient_ErrorHandlerReturningBothDoesNotLeak(t *testing.T) {
 	}
 }
 
-func TestNewHttpClient_TruncatesLargeBody(t *testing.T) {
+func TestNewHttpClient_RejectsOversizeBody(t *testing.T) {
 	payload := strings.Repeat("x", maxResponseSize+1024)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, payload)
@@ -216,9 +218,13 @@ func TestNewHttpClient_TruncatesLargeBody(t *testing.T) {
 		Configs: fastRetryConfigs(),
 	})
 
-	body := readData(t, res.Data)
-	if len(body) != maxResponseSize {
-		t.Fatalf("expected body capped at %d bytes, got %d", maxResponseSize, len(body))
+	// A truncated body used to surface downstream as a confusing JSON parse
+	// error; now it is an explicit upstream error.
+	if res.StatCode != http.StatusBadGateway {
+		t.Fatalf("expected 502 for oversize body, got %d (%v)", res.StatCode, res.ErrMsg)
+	}
+	if !strings.Contains(fmt.Sprint(res.ErrMsg), ErrResponseTooLarge.Error()) {
+		t.Fatalf("expected ErrResponseTooLarge in message, got %v", res.ErrMsg)
 	}
 }
 
@@ -273,6 +279,123 @@ func TestNewHttpClient_UrlValuesFormBody(t *testing.T) {
 	}
 }
 
+func TestNewHttpClient_TimeoutCarriesSNAPCodeAndObscurePrefix(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		fmt.Fprint(w, "late")
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+
+	res := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Ctx:     ctx,
+		Url:     server.URL,
+		Method:  http.MethodGet,
+		Configs: fastRetryConfigs(),
+	})
+
+	if res.StatCode != http.StatusGatewayTimeout {
+		t.Fatalf("expected 504, got %d (%v)", res.StatCode, res.ErrMsg)
+	}
+	if code, _ := res.ErrCode.(string); code != sdk_cons.SNAP_REQUEST_TIMEOUT {
+		t.Fatalf("expected SNAP code %s, got %v", sdk_cons.SNAP_REQUEST_TIMEOUT, res.ErrCode)
+	}
+	if !strings.Contains(fmt.Sprint(res.ErrMsg), "Request to external network failed") {
+		t.Fatalf("timeout message must trip the api-be OBSCURE guard, got %v", res.ErrMsg)
+	}
+	if !IsTimeoutResponse(res) {
+		t.Fatal("IsTimeoutResponse must report true for a 50400 response")
+	}
+}
+
+func TestNewHttpClient_TimeoutNotRetriedByDefaultOnPost(t *testing.T) {
+	// The request was written; retrying a disbursement here could move money
+	// twice. Default policy must surface the timeout after a single attempt.
+	var attempts int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&attempts, 1)
+		time.Sleep(150 * time.Millisecond)
+		fmt.Fprint(w, "late")
+	}))
+	defer server.Close()
+
+	cfgs := fastRetryConfigs()
+	cfgs.Timeout = 30 * time.Millisecond
+	cfgs.Budget = 500 * time.Millisecond
+
+	res := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Url:     server.URL,
+		Method:  http.MethodPost,
+		Body:    `{"amount":1000}`,
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Configs: cfgs,
+	})
+
+	if got := atomic.LoadInt32(&attempts); got != 1 {
+		t.Fatalf("POST timeout must not be retried after write, got %d attempts", got)
+	}
+	if res.StatCode != http.StatusGatewayTimeout {
+		t.Fatalf("expected 504, got %d", res.StatCode)
+	}
+}
+
+func TestNewHttpClient_TimeoutRetriedWhenEnabledForIdempotentCall(t *testing.T) {
+	var attempts int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&attempts, 1)
+		time.Sleep(120 * time.Millisecond)
+		fmt.Fprint(w, "late")
+	}))
+	defer server.Close()
+
+	cfgs := fastRetryConfigs()
+	cfgs.Timeout = 30 * time.Millisecond
+	cfgs.Budget = 400 * time.Millisecond
+	cfgs.RetryOnTimeout = true
+
+	res := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Url:     server.URL,
+		Method:  http.MethodGet,
+		Configs: cfgs,
+	})
+
+	if got := atomic.LoadInt32(&attempts); got < 2 {
+		t.Fatalf("expected retries once RetryOnTimeout is enabled, got %d attempts", got)
+	}
+	if res.StatCode != http.StatusGatewayTimeout {
+		t.Fatalf("expected 504 after exhausted budget, got %d", res.StatCode)
+	}
+}
+
+func TestNewHttpClient_PostWithIdempotencyKeyIsRetried(t *testing.T) {
+	var attempts int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&attempts, 1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	res := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Url:    server.URL,
+		Method: http.MethodPost,
+		Body:   `{"amount":1000}`,
+		Headers: map[string]string{
+			"Content-Type":    "application/json",
+			"Idempotency-Key": "trx-123",
+		},
+		Configs: fastRetryConfigs(),
+	})
+
+	if got := atomic.LoadInt32(&attempts); got != defaultRetryMax+1 {
+		t.Fatalf("request carrying Idempotency-Key is replayable, expected %d attempts, got %d", defaultRetryMax+1, got)
+	}
+	if res.StatCode != http.StatusInternalServerError {
+		t.Fatalf("expected propagated 500, got %d", res.StatCode)
+	}
+}
+
 func TestNewHttpClient_CustomCheckRetryOverridesDefault(t *testing.T) {
 	var attempts int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -297,6 +420,90 @@ func TestNewHttpClient_CustomCheckRetryOverridesDefault(t *testing.T) {
 	if res.StatCode != http.StatusServiceUnavailable {
 		t.Fatalf("expected propagated 503, got %d", res.StatCode)
 	}
+}
+
+func TestNewHttpClient_BudgetIsBounded(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(120 * time.Millisecond)
+		fmt.Fprint(w, "late")
+	}))
+	defer server.Close()
+
+	cfgs := fastRetryConfigs()
+	cfgs.Timeout = 60 * time.Millisecond
+	cfgs.Budget = 200 * time.Millisecond
+	cfgs.RetryOnTimeout = true
+
+	start := time.Now()
+	res := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Url:     server.URL,
+		Method:  http.MethodGet,
+		Configs: cfgs,
+	})
+	elapsed := time.Since(start)
+
+	if res.StatCode != http.StatusGatewayTimeout {
+		t.Fatalf("expected 504, got %d", res.StatCode)
+	}
+	if elapsed > 600*time.Millisecond {
+		t.Fatalf("budget must bound the total call, took %s", elapsed)
+	}
+}
+
+func TestNewHttpClient_NilOptionsDoesNotPanic(t *testing.T) {
+	res := NewHttpClient(nil)
+	if res.StatCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 for nil options, got %d", res.StatCode)
+	}
+}
+
+func TestRedactURL(t *testing.T) {
+	parsed := &url.URL{
+		Scheme:   "https",
+		Host:     "vendor.example",
+		Path:     "/v1/payment",
+		RawQuery: "api_key=secret&token=secret",
+		User:     url.UserPassword("user", "pass"),
+	}
+
+	got := redactURL(parsed)
+	if strings.Contains(got, "secret") || strings.Contains(got, "pass") {
+		t.Fatalf("credentials leaked into log url: %s", got)
+	}
+	if got != "https://vendor.example/v1/payment" {
+		t.Fatalf("unexpected redacted url: %s", got)
+	}
+}
+
+func TestIsTimeoutResponse(t *testing.T) {
+	if !IsTimeoutResponse(sdk_opt.Response{ErrCode: "50400"}) {
+		t.Fatal("expected true for 50400")
+	}
+	if IsTimeoutResponse(sdk_opt.Response{StatCode: http.StatusGatewayTimeout}) {
+		t.Fatal("plain 504 without SNAP code must not be treated as vendor timeout")
+	}
+}
+
+func BenchmarkNewHttpClient_Parallel(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+	defer server.Close()
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			res := NewHttpClient(&sdk_dto.HttpClientOptions{
+				Url:     server.URL,
+				Method:  http.MethodPost,
+				Body:    `{"amount":1000}`,
+				Headers: map[string]string{"Content-Type": "application/json"},
+			})
+			if res.StatCode != http.StatusOK {
+				b.Fatalf("unexpected status %d", res.StatCode)
+			}
+		}
+	})
 }
 
 func TestTrimLogString_FastPath(t *testing.T) {

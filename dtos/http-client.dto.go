@@ -10,13 +10,17 @@ import (
 
 type (
 	HttpClientConfigs struct {
-		RetryWaitMin time.Duration
-		RetryWaitMax time.Duration
-		RetryMax     int
-		CheckRetry   retryablehttp.CheckRetry
-		Backoff      retryablehttp.Backoff
-		ErrorHandler retryablehttp.ErrorHandler
-		PrepareRetry retryablehttp.PrepareRetry
+		RetryWaitMin   time.Duration
+		RetryWaitMax   time.Duration
+		RetryMax       int
+		CheckRetry     retryablehttp.CheckRetry
+		Backoff        retryablehttp.Backoff
+		ErrorHandler   retryablehttp.ErrorHandler
+		PrepareRetry   retryablehttp.PrepareRetry
+		Timeout        time.Duration
+		Budget         time.Duration
+		RetryOnTimeout bool
+		LogRequests    bool
 	}
 
 	HttpClientOptions struct {
