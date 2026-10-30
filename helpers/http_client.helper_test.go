@@ -521,3 +521,50 @@ func TestTrimLogString_FastPath(t *testing.T) {
 		t.Fatalf("truncated output must carry suffix, got %q", got[len(got)-20:])
 	}
 }
+
+func TestNewHttpClient_SelectiveAuditLogging(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/error" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"error":"invalid_account","pin":"123456"}`)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"status":"ok","name":"Budi"}`)
+	}))
+	defer server.Close()
+
+	ctx := context.WithValue(context.Background(), sdk_cons.CtxRequestID, "req-test-12345")
+
+	// 1. Success call (200 OK): caller gets complete response data
+	resSuccess := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Ctx:     ctx,
+		Url:     server.URL + "/success",
+		Method:  http.MethodPost,
+		Body:    `{"amount":10000}`,
+		Headers: map[string]string{"Content-Type": "application/json", "Authorization": "secret-auth"},
+	})
+	if resSuccess.StatCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resSuccess.StatCode)
+	}
+	data := readData(t, resSuccess.Data)
+	if !strings.Contains(string(data), `"name":"Budi"`) {
+		t.Fatalf("body stream was not restored properly, got: %s", string(data))
+	}
+
+	// 2. Error call (400 Bad Request): caller gets complete error body
+	resError := NewHttpClient(&sdk_dto.HttpClientOptions{
+		Ctx:     ctx,
+		Url:     server.URL + "/error",
+		Method:  http.MethodPost,
+		Body:    `{"pin":"999999","amount":10000}`,
+		Headers: map[string]string{"Content-Type": "application/json"},
+	})
+	if resError.StatCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resError.StatCode)
+	}
+	errData := readData(t, resError.Data)
+	if !strings.Contains(string(errData), `"invalid_account"`) {
+		t.Fatalf("error body stream was not restored properly, got: %s", string(errData))
+	}
+}

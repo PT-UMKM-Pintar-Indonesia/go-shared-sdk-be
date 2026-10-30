@@ -2,9 +2,9 @@ package sdk_pkg
 
 import (
 	"os"
+	"strings"
 	"sync"
 	"time"
-
 	"github.com/sirupsen/logrus"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -21,12 +21,27 @@ func logrusArgs(a any) []any {
 	return []any{a}
 }
 
+func init() {
+	applyDefaultFormatter()
+}
+
 func applyDefaultFormatter() {
 	logrusFormatterOnce.Do(func() {
-		logrus.SetFormatter(&logrus.TextFormatter{
-			ForceColors:     true,
-			TimestampFormat: time.RFC3339,
-		})
+		if strings.ToLower(strings.TrimSpace(os.Getenv("LOG_FORMAT"))) == "json" {
+			logrus.SetFormatter(&logrus.JSONFormatter{
+				TimestampFormat: time.RFC3339Nano,
+				FieldMap: logrus.FieldMap{
+					logrus.FieldKeyTime:  "time",
+					logrus.FieldKeyLevel: "severity",
+					logrus.FieldKeyMsg:   "message",
+				},
+			})
+		} else {
+			logrus.SetFormatter(&logrus.TextFormatter{
+				ForceColors:     true,
+				TimestampFormat: time.RFC3339,
+			})
+		}
 	})
 }
 

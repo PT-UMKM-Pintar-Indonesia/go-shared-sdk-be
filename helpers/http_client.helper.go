@@ -184,12 +184,21 @@ func newRetryClient(options *sdk_dto.HttpClientOptions, policy requestPolicy) *r
 
 func newRequestLogHook(verbose bool) retryablehttp.RequestLogHook {
 	return func(_ retryablehttp.Logger, r *http.Request, attempt int) {
-		entry := logrus.WithFields(logrus.Fields{
+		fields := logrus.Fields{
 			"namespace": "http_client",
 			"url":       redactURL(r.URL),
 			"method":    r.Method,
 			"attempt":   attempt,
-		})
+		}
+		if r.Context() != nil {
+			if reqIDVal := r.Context().Value(sdk_cons.CtxRequestID); reqIDVal != nil {
+				if s, ok := reqIDVal.(string); ok && s != "" {
+					fields["request_id"] = s
+				}
+			}
+		}
+
+		entry := logrus.WithFields(fields)
 
 		if verbose {
 			entry.Info("LOG_WORKER_HTTP_REQUEST")
@@ -206,17 +215,25 @@ func newResponseLogHook(verbose bool) retryablehttp.ResponseLogHook {
 			url    string
 			method string
 		)
+		fields := logrus.Fields{
+			"namespace":   "http_client",
+			"status_code": r.StatusCode,
+		}
 		if r.Request != nil {
 			url = redactURL(r.Request.URL)
 			method = r.Request.Method
+			if r.Request.Context() != nil {
+				if reqIDVal := r.Request.Context().Value(sdk_cons.CtxRequestID); reqIDVal != nil {
+					if s, ok := reqIDVal.(string); ok && s != "" {
+						fields["request_id"] = s
+					}
+				}
+			}
 		}
+		fields["url"] = url
+		fields["method"] = method
 
-		entry := logrus.WithFields(logrus.Fields{
-			"namespace":   "http_client",
-			"url":         url,
-			"method":      method,
-			"status_code": r.StatusCode,
-		})
+		entry := logrus.WithFields(fields)
 
 		if verbose || r.StatusCode >= http.StatusInternalServerError {
 			entry.Info("LOG_WORKER_HTTP_RESPONSE")
@@ -314,21 +331,33 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 	policy := resolvePolicy(options)
 	client := newRetryClient(options, policy)
 
-	var bodyReader io.Reader
+	var (
+		bodyReader     io.Reader
+		rawRequestBody []byte
+	)
 	switch v := options.Body.(type) {
 
 	case nil:
 	case io.Reader:
-		bodyReader = v
+		if b, readErr := io.ReadAll(v); readErr == nil {
+			rawRequestBody = b
+			bodyReader = bytes.NewReader(b)
+		} else {
+			bodyReader = v
+		}
 
 	case string:
+		rawRequestBody = []byte(v)
 		bodyReader = strings.NewReader(v)
 
 	case []byte:
+		rawRequestBody = v
 		bodyReader = bytes.NewReader(v)
 
 	case url.Values:
-		bodyReader = strings.NewReader(v.Encode())
+		encoded := v.Encode()
+		rawRequestBody = []byte(encoded)
+		bodyReader = strings.NewReader(encoded)
 
 	default:
 		contentType := sdk_cons.EMPTY
@@ -345,25 +374,38 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 				res.ErrMsg = fmt.Errorf("failed to marshal body: %w", err).Error()
 				return
 			}
-
+			rawRequestBody = bodyBytes
 			bodyReader = bytes.NewReader(bodyBytes)
 		case strings.Contains(contentType, "x-www-form-urlencoded"):
 			if form, ok := toFormValues(v); ok {
-				bodyReader = strings.NewReader(form.Encode())
+				encoded := form.Encode()
+				rawRequestBody = []byte(encoded)
+				bodyReader = strings.NewReader(encoded)
 			} else {
 				logrus.Warnf("NewHttpClient: body %T is not form-encodable for %s; sending fmt %%v representation", v, redactURLString(options.Url))
-				bodyReader = strings.NewReader(fmt.Sprintf("%v", v))
+				rendered := fmt.Sprintf("%v", v)
+				rawRequestBody = []byte(rendered)
+				bodyReader = strings.NewReader(rendered)
 			}
 
 		default:
 			logrus.Warnf("NewHttpClient: body %T serialized via fmt %%v for %s (no JSON Content-Type set)", v, redactURLString(options.Url))
-			bodyReader = strings.NewReader(fmt.Sprintf("%v", v))
+			rendered := fmt.Sprintf("%v", v)
+			rawRequestBody = []byte(rendered)
+			bodyReader = strings.NewReader(rendered)
 		}
 	}
 
 	ctx := options.Ctx
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	var requestID string
+	if reqIDVal := ctx.Value(sdk_cons.CtxRequestID); reqIDVal != nil {
+		if s, ok := reqIDVal.(string); ok {
+			requestID = s
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, policy.budget)
@@ -385,37 +427,97 @@ func NewHttpClient(options *sdk_dto.HttpClientOptions) (res sdk_opt.Response) {
 		return httpClientError(err)
 	}
 
+	startTime := time.Now()
 	httpRes, httpErr := client.Do(retryReq)
+	durationMs := time.Since(startTime).Milliseconds()
 
 	if httpRes != nil && httpErr != nil {
 		io.Copy(io.Discard, io.LimitReader(httpRes.Body, errorDrainLimit))
 		httpRes.Body.Close()
-		return httpClientError(httpErr)
 	}
 
 	if httpErr != nil {
-		return httpClientError(httpErr)
+		res = httpClientError(httpErr)
+		logrus.WithFields(logrus.Fields{
+			"severity":    "ERROR",
+			"message":     "LOG_HTTP_OUTBOUND_FAILED",
+			"request_id":  requestID,
+			"namespace":   "http_client",
+			"method":      options.Method,
+			"url":         redactURLString(options.Url),
+			"status_code": res.StatCode,
+			"duration_ms": durationMs,
+			"error_msg":   res.ErrMsg,
+			"headers":     SanitizeHeaders(options.Headers),
+			"payload":     SanitizeBody(rawRequestBody),
+		}).Error("LOG_HTTP_OUTBOUND_FAILED")
+		return res
 	}
 	defer httpRes.Body.Close()
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(httpRes.Body, maxResponseSize+1))
 	if err != nil {
-		return httpClientError(err)
+		res = httpClientError(err)
+		logrus.WithFields(logrus.Fields{
+			"severity":    "ERROR",
+			"message":     "LOG_HTTP_OUTBOUND_FAILED",
+			"request_id":  requestID,
+			"namespace":   "http_client",
+			"method":      options.Method,
+			"url":         redactURLString(options.Url),
+			"status_code": res.StatCode,
+			"duration_ms": durationMs,
+			"error_msg":   res.ErrMsg,
+			"headers":     SanitizeHeaders(options.Headers),
+			"payload":     SanitizeBody(rawRequestBody),
+		}).Error("LOG_HTTP_OUTBOUND_FAILED")
+		return res
 	}
 
 	if len(bodyBytes) > maxResponseSize {
 		logrus.Warnf("HTTP Response exceeded %d bytes limit for URL: %s", maxResponseSize, redactURLString(options.Url))
-		return httpClientError(ErrResponseTooLarge)
+		res = httpClientError(ErrResponseTooLarge)
+		logrus.WithFields(logrus.Fields{
+			"severity":    "ERROR",
+			"message":     "LOG_HTTP_OUTBOUND_FAILED",
+			"request_id":  requestID,
+			"namespace":   "http_client",
+			"method":      options.Method,
+			"url":         redactURLString(options.Url),
+			"status_code": res.StatCode,
+			"duration_ms": durationMs,
+			"error_msg":   res.ErrMsg,
+			"headers":     SanitizeHeaders(options.Headers),
+			"payload":     SanitizeBody(rawRequestBody),
+		}).Error("LOG_HTTP_OUTBOUND_FAILED")
+		return res
 	}
 
-	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+	if httpRes.StatusCode < http.StatusBadRequest {
 		logrus.WithFields(logrus.Fields{
-			"namespace":        "http_client",
-			"url":              redactURLString(options.Url),
-			"method":           options.Method,
-			"status_code":      httpRes.StatusCode,
-			"response_preview": TrimLogStringWithMax(string(bodyBytes), logBodyPreviewLimit),
-		}).Debug("LOG_WORKER_HTTP_RESPONSE_BODY")
+			"severity":    "INFO",
+			"message":     "LOG_HTTP_OUTBOUND_SUCCESS",
+			"request_id":  requestID,
+			"namespace":   "http_client",
+			"method":      options.Method,
+			"url":         redactURLString(options.Url),
+			"status_code": httpRes.StatusCode,
+			"duration_ms": durationMs,
+		}).Info("LOG_HTTP_OUTBOUND_SUCCESS")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"severity":    "ERROR",
+			"message":     "LOG_HTTP_OUTBOUND_FAILED",
+			"request_id":  requestID,
+			"namespace":   "http_client",
+			"method":      options.Method,
+			"url":         redactURLString(options.Url),
+			"status_code": httpRes.StatusCode,
+			"duration_ms": durationMs,
+			"headers":     SanitizeHeaders(options.Headers),
+			"payload":     SanitizeBody(rawRequestBody),
+			"response":    SanitizeBody(bodyBytes),
+		}).Error("LOG_HTTP_OUTBOUND_FAILED")
 	}
 
 	res.StatCode = httpRes.StatusCode

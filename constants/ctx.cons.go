@@ -61,3 +61,10 @@ const (
 	DBTransactionTimeout = 20 * time.Second
 	BackgroundJobTimeout = 5 * time.Minute
 )
+
+// ============================================================================
+// CONTEXT KEYS
+// ============================================================================
+const (
+	CtxRequestID = "request_id"
+)
