@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"github.com/sirupsen/logrus"
 
 	sdk_cons "github.com/PT-UMKM-Pintar-Indonesia/shared-sdk/constants"
@@ -21,27 +22,38 @@ func logrusArgs(a any) []any {
 	return []any{a}
 }
 
-func init() {
-	applyDefaultFormatter()
-}
-
+// applyDefaultFormatter installs a formatter for callers that never bootstrap
+// the logger explicitly. It is a fallback, not an owner: once InitLogger has
+// run, the formatter it installed is left alone. There is deliberately no
+// init() here, because installing a formatter at import time would race with
+// an InitLogger call in main.
 func applyDefaultFormatter() {
+	if LoggerInitialised() {
+		return
+	}
+
 	logrusFormatterOnce.Do(func() {
-		if strings.ToLower(strings.TrimSpace(os.Getenv("LOG_FORMAT"))) == "json" {
-			logrus.SetFormatter(&logrus.JSONFormatter{
-				TimestampFormat: time.RFC3339Nano,
-				FieldMap: logrus.FieldMap{
-					logrus.FieldKeyTime:  "time",
-					logrus.FieldKeyLevel: "severity",
-					logrus.FieldKeyMsg:   "message",
-				},
-			})
-		} else {
-			logrus.SetFormatter(&logrus.TextFormatter{
-				ForceColors:     true,
-				TimestampFormat: time.RFC3339,
-			})
+		// Re-check inside the Once: InitLogger may have run between the guard
+		// above and acquiring the Once.
+		if LoggerInitialised() {
+			return
 		}
+
+		// Opt-in JSON, matching the behaviour callers had before InitLogger
+		// existed. InitLogger inverts this and defaults to JSON, because a
+		// caller that bootstraps explicitly is deploying somewhere that
+		// collects structured logs.
+		if strings.EqualFold(strings.TrimSpace(os.Getenv(EnvLogFormat)), "json") {
+			formatter, _ := resolveFormatter(sdk_cons.EMPTY)
+			logrus.SetFormatter(formatter)
+
+			return
+		}
+
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:     true,
+			TimestampFormat: time.RFC3339,
+		})
 	})
 }
 

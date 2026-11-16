@@ -26,4 +26,39 @@ type (
 		CustomMessage    string
 		CustomFields     *LogrusCustomFields
 	}
+
+	// LoggerOptions configures the global logger bootstrap. Every field is
+	// optional: a blank field falls back to its environment variable, then to
+	// a derived default. See sdk_pkg.InitLogger.
+	LoggerOptions struct {
+		// Service is the value of labels.service. Defaults to LOG_SERVICE_NAME,
+		// then to the binary name.
+		Service string
+
+		// Instance distinguishes replicas of one service, such as the %i of a
+		// systemd template unit. Defaults to LOG_SERVICE_INSTANCE.
+		Instance string
+
+		// Host is the value of labels.host. Defaults to LOG_SERVICE_HOST, then
+		// to the kernel hostname, which on GCE is the instance name.
+		Host string
+
+		// Zone optionally records the GCP zone or region of the VM. Defaults
+		// to LOG_SERVICE_ZONE.
+		Zone string
+
+		// Environment is the value of labels.env. Defaults to APP_ENV, then
+		// ENV, then GIN_MODE.
+		Environment string
+
+		// Level is a logrus level name. Defaults to LOG_LEVEL, then info.
+		Level string
+
+		// Format is "json" or "text". Defaults to LOG_FORMAT, then json.
+		Format string
+
+		// Labels are merged into the shared label set, overriding the derived
+		// keys on conflict.
+		Labels map[string]string
+	}
 )
