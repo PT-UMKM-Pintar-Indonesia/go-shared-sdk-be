@@ -38,6 +38,7 @@ type (
 		MerchantID        string  `json:"merchant_id,omitempty"`
 		MerchantNetworkID string  `json:"merchant_network_id,omitempty"`
 		QrEmvcoImage      string  `json:"qr_emvco_image,omitempty"`
+		NetworkStatus     string `json:"network_status,omitempty"`
 	}
 
 	CallbackTransaction struct {
@@ -76,6 +77,7 @@ type (
 		MerchantName      string `json:"merchant_name,omitempty"`
 		BuyerFullname     string `json:"buyer_fullname,omitempty"`
 		MerchantLocation  string `json:"merchant_location,omitempty"`
+		NetworkStatus     string `json:"network_status,omitempty"`
 	}
 
 	TransactionInfo struct {
